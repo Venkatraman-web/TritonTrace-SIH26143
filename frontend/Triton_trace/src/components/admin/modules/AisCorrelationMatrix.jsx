@@ -1,5 +1,6 @@
 import { useIncident } from "../../../context/IncidentContext";
 import { topVesselsByIncident, colorForRank, displayScore } from "../../../data/aisTopVessels";
+import { formatUTCDateTime } from "../../../lib/dateFormat";
 import { Crosshair, Navigation, AlertTriangle } from "lucide-react";
 
 export const AisCorrelationMatrix = ({ incidentId }) => {
@@ -19,7 +20,7 @@ export const AisCorrelationMatrix = ({ incidentId }) => {
     type: v.type,
     cpa: `${v.minDistanceKm.toFixed(1)} km`,
     score: displayScore(v.score),
-    encounterTime: new Date(v.bestEncounterTimestamp).toLocaleString(),
+    encounterTime: formatUTCDateTime(v.bestEncounterTimestamp),
     // Where this vessel's route intersects the source density cluster.
     intersectCoord: [v.matchedCandidateLon, v.matchedCandidateLat],
   }));

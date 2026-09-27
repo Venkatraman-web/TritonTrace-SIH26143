@@ -1,6 +1,5 @@
 import { PanelLeftClose } from "lucide-react";
 import { TriageQueue } from "./modules/TriageQueue";
-import { RegionalAlertsPanel } from "./modules/RegionalAlertsPanel";
 
 export const InvestigatorLeft = ({ onCollapse }) => {
   return (
@@ -35,8 +34,6 @@ export const InvestigatorLeft = ({ onCollapse }) => {
       {/* Module Container */}
       <div className="flex-1 overflow-y-auto px-4 py-3 custom-scrollbar">
         <TriageQueue />
-        <div className="w-full h-px bg-slate-200"></div>
-        <RegionalAlertsPanel />
       </div>
     </aside>
   );

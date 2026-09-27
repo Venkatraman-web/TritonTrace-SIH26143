@@ -8,6 +8,8 @@ import { densityGridByIncident } from "../../data/densityGrid";
 import { topVesselsByIncident, colorForRank } from "../../data/aisTopVessels";
 import { incidentParticlesById } from "../../data/incidentParticles";
 import { computeHotspotStatuses } from "../../data/hotspotTimeline";
+import { topOriginCandidatesByIncident } from "../../data/topOriginCandidates";
+import { formatUTCDateTime } from "../../lib/dateFormat";
 import * as turf from "@turf/turf";
 
 const HOTSPOT_STATUS_COLORS = {
@@ -29,12 +31,11 @@ const applyLayerVisibility = (map, layers) => {
         map.setLayoutProperty("sar_slick-halo", "visibility", visibility);
       if (map.getLayer("sar_slick-points"))
         map.setLayoutProperty("sar_slick-points", "visibility", visibility);
-    } else if (layer.id === "hindcast") {
-      if (map.getLayer("hindcast-points"))
-        map.setLayoutProperty("hindcast-points", "visibility", visibility);
     } else if (layer.id === "ais_tracks") {
       if (map.getLayer("ais_tracks-line"))
         map.setLayoutProperty("ais_tracks-line", "visibility", visibility);
+      if (map.getLayer("live-vessels-symbol"))
+        map.setLayoutProperty("live-vessels-symbol", "visibility", visibility);
     } else if (layer.id === "geofences") {
       if (map.getLayer("geofences-line"))
         map.setLayoutProperty("geofences-line", "visibility", visibility);
@@ -51,7 +52,35 @@ export const MapCanvas = ({
   layers = [],
   commercialFleet = [],
   selectedVesselId = null,
-  showDiversionRoute = false,
+  // Off only for the commercial portal, which shows a specific vessel's
+  // track on demand (Alibi Generator) rather than every fleet vessel's by
+  // default — on everywhere else so existing behavior is unchanged.
+  showFleetTracks = true,
+  // A single vessel to spotlight with its own distinct track/marker,
+  // independent of the generic fleet-tracks layer — the commercial
+  // portal's Alibi Generator uses this for whichever vessel an operator
+  // just looked up by MMSI, which may not be in commercialFleet at all.
+  highlightedVessel = null,
+  // Researcher-portal-only overlays for the backward ATTRIBUTION view — off
+  // by default so the admin/commercial maps render exactly as before.
+  showHotspotMarkers = false,
+  showClusterCandidates = false,
+  // When true, only the currently-focused candidate cluster is rendered
+  // (instead of the full candidate list with one merely highlighted) —
+  // used by the commercial portal, where a looked-up vessel's single
+  // matched cluster is the only one that matters. Also gates geofences
+  // (see highlightedGeofenceName below).
+  onlyFocusedCandidate = false,
+  // Commercial's P&I Risk Assessor: the name of the one geofence zone a
+  // clicked vessel's route actually hits (its liability "threatened
+  // asset"), shown on the map only while onlyFocusedCandidate is true.
+  highlightedGeofenceName = null,
+  // Admin/Investigator only: narrow the SAR slick + AIS fleet down to just
+  // whichever triage card is selected (activeIncident), instead of always
+  // showing both incidents at once. Off elsewhere — the commercial portal
+  // also uses activeIncident (for its own spill picker), but its SAR slick
+  // polygons are meant to always show regardless of that selection.
+  isolateToActiveIncident = false,
 }) => {
   const token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
   const defaultLat = Number(import.meta.env.VITE_DEFAULT_LAT) || 31.35;
@@ -73,6 +102,7 @@ export const MapCanvas = ({
     allIncidentParticles,
     activeAnalysisMode,
     activeIncident,
+    vesselFleetByIncident,
     focusedVesselMmsi,
     focusedCandidateId,
     focusVessel,
@@ -93,10 +123,14 @@ export const MapCanvas = ({
   };
 
   const sarSlickParticlesGeoJSON = useMemo(() => {
-    // While FORWARD TRACK is open, only the chosen incident's own slick
-    // stays on the map — the other incident's is hidden, not just its AIS.
-    const particles = forwardTrackIncidentId
-      ? incidentParticlesById[forwardTrackIncidentId] || []
+    // While FORWARD TRACK is open, or (admin only) a single triage card is
+    // selected, only that incident's own slick stays on the map — the
+    // other incident's is hidden. Otherwise both show at once.
+    const singleIncidentId =
+      forwardTrackIncidentId ||
+      (isolateToActiveIncident ? activeIncident : null);
+    const particles = singleIncidentId
+      ? incidentParticlesById[singleIncidentId] || []
       : allIncidentParticles;
     return {
       type: "FeatureCollection",
@@ -106,7 +140,12 @@ export const MapCanvas = ({
         geometry: { type: "Point", coordinates: [p.lon, p.lat] },
       })),
     };
-  }, [allIncidentParticles, forwardTrackIncidentId]);
+  }, [
+    allIncidentParticles,
+    forwardTrackIncidentId,
+    activeIncident,
+    isolateToActiveIncident,
+  ]);
 
   // The current forward-track step's actual particle positions — the
   // single source of truth for both what's drawn on the map and which
@@ -164,6 +203,26 @@ export const MapCanvas = ({
   // against the same geofences drawn on the map, not a separately
   // precomputed table that could disagree with what's actually rendered).
   const geofencesGeoJSON = useMemo(() => {
+    // Commercial's Alibi/P&I flow keeps geofences off entirely except to
+    // call out the one specific zone a clicked vessel's route hits (the
+    // P&I liability estimate's "threatened asset") — never the full set.
+    if (onlyFocusedCandidate) {
+      const matched = highlightedGeofenceName
+        ? geofencesData.features.filter((f) => f.properties.name === highlightedGeofenceName)
+        : [];
+      return {
+        ...geofencesData,
+        features: matched.map((f) => ({
+          ...f,
+          properties: {
+            ...f.properties,
+            displayColor: f.properties.color,
+            displayOpacity: 0.4,
+            displayLineOpacity: 1,
+          },
+        })),
+      };
+    }
     if (!forwardTrackIncidentId) {
       return {
         ...geofencesData,
@@ -197,12 +256,76 @@ export const MapCanvas = ({
         };
       }),
     };
-  }, [forwardTrackIncidentId, currentStepParticles]);
+  }, [forwardTrackIncidentId, currentStepParticles, onlyFocusedCandidate, highlightedGeofenceName]);
 
-  const attributionDensityGeoJSON = useMemo(
-    () => densityGridByIncident[attributionIncidentId] || EMPTY_FEATURE_COLLECTION,
-    [attributionIncidentId],
-  );
+  // Commercial's Alibi/P&I flow hides the density heatmap until a vessel or
+  // cluster is actually focused — an operator/underwriter shouldn't see the
+  // full backtracked plume before they've picked a specific vessel or club.
+  const attributionDensityGeoJSON = useMemo(() => {
+    if (onlyFocusedCandidate && !focusedVesselMmsi && !focusedCandidateId) {
+      return EMPTY_FEATURE_COLLECTION;
+    }
+    return densityGridByIncident[attributionIncidentId] || EMPTY_FEATURE_COLLECTION;
+  }, [attributionIncidentId, onlyFocusedCandidate, focusedVesselMmsi, focusedCandidateId]);
+
+  // Top 15 backtracked cluster candidate points (by source_score) for
+  // whichever incident has ATTRIBUTION open — unlike
+  // attributionVesselsGeoJSON.intersections below (only the candidates a
+  // top-15 AIS vessel was matched against), this is ranked purely by
+  // backtrack confidence, independent of any vessel match, so the researcher
+  // view shows the strongest candidates rather than the vessel-correlated
+  // subset the investigator view focuses on.
+  const clusterCandidatesGeoJSON = useMemo(() => {
+    if (!showClusterCandidates || !attributionIncidentId)
+      return EMPTY_FEATURE_COLLECTION;
+    const allCandidates = topOriginCandidatesByIncident[attributionIncidentId] || [];
+    // Commercial's Alibi/P&I flow only ever cares about the one cluster a
+    // looked-up vessel was actually matched to — show nothing until one is
+    // focused, and then narrow down to just that point, instead of showing
+    // the full candidate list (with one merely highlighted) at any point.
+    let candidates = allCandidates;
+    if (onlyFocusedCandidate) {
+      candidates = focusedCandidateId
+        ? allCandidates.filter((c) => c.candidateId === focusedCandidateId)
+        : [];
+    }
+    return {
+      type: "FeatureCollection",
+      features: candidates
+        .filter((c) => c.lat != null && c.lon != null)
+        .map((c) => ({
+          type: "Feature",
+          properties: {
+            candidateId: c.candidateId,
+            sourceScore: c.sourceScore ?? 0,
+            isFocused: focusedCandidateId === c.candidateId,
+          },
+          geometry: { type: "Point", coordinates: [c.lon, c.lat] },
+        })),
+    };
+  }, [showClusterCandidates, attributionIncidentId, focusedCandidateId, onlyFocusedCandidate]);
+
+  // Named hotspot locations (one point per zone name, deduped across its
+  // Watch/Critical polygon pair) shown only while ATTRIBUTION is open, so a
+  // researcher can see at a glance which known hotspots sit near the
+  // backtracked density cluster.
+  const hotspotMarkersGeoJSON = useMemo(() => {
+    if (!showHotspotMarkers) return EMPTY_FEATURE_COLLECTION;
+    const seen = new Set();
+    const features = [];
+    geofencesData.features.forEach((f) => {
+      const name = f.properties.name;
+      if (seen.has(name)) return;
+      seen.add(name);
+      const [lon, lat] = f.geometry.coordinates[0][0];
+      features.push({
+        type: "Feature",
+        properties: { name },
+        geometry: { type: "Point", coordinates: [lon, lat] },
+      });
+    });
+    return { type: "FeatureCollection", features };
+  }, [showHotspotMarkers]);
 
   // Top-15 vessel routes + where each one's route intersects the density
   // cluster (matched_candidate point), with a thin connector between a
@@ -224,6 +347,10 @@ export const MapCanvas = ({
       topVessels = allTopVessels.filter(
         (v) => v.matchedCandidateId === focusedCandidateId,
       );
+    } else if (onlyFocusedCandidate) {
+      // Commercial's Alibi/P&I flow: no vessel markers at all until a
+      // specific one is looked up — never the unfiltered top 15.
+      topVessels = [];
     }
     const isFocused = Boolean(focusedVesselMmsi || focusedCandidateId);
 
@@ -252,7 +379,7 @@ export const MapCanvas = ({
             color,
             isFocused,
             encounterTime: v.bestEncounterTimestamp
-              ? new Date(v.bestEncounterTimestamp).toLocaleString()
+              ? formatUTCDateTime(v.bestEncounterTimestamp)
               : "Unknown",
           },
           geometry: {
@@ -282,7 +409,7 @@ export const MapCanvas = ({
       intersections: { type: "FeatureCollection", features: intersectionFeatures },
       connectors: { type: "FeatureCollection", features: connectorFeatures },
     };
-  }, [attributionIncidentId, commercialFleet, focusedVesselMmsi, focusedCandidateId]);
+  }, [attributionIncidentId, commercialFleet, focusedVesselMmsi, focusedCandidateId, onlyFocusedCandidate]);
 
   // While ATTRIBUTION is open, the generic AIS layer narrows down to just
   // that incident's top-15 (already shown, colored, on the attribution
@@ -290,9 +417,21 @@ export const MapCanvas = ({
   // "nearest" vessels aren't relevant to a specific attribution and just
   // add clutter on top of it.
   const visibleVesselFleet = useMemo(() => {
+    // Commercial portal opts out of showing every fleet vessel's track by
+    // default (showFleetTracks=false) — routes there only appear once a
+    // specific vessel is looked up (Alibi Generator), not for the whole
+    // generic top-10 live fleet on load.
+    if (!showFleetTracks) return [];
     // FORWARD TRACK is a single-incident view of the forecast only — no AIS.
     if (forwardTrackIncidentId) return [];
-    if (!attributionIncidentId) return commercialFleet;
+    if (!attributionIncidentId) {
+      // Admin only: a single selected triage card narrows the fleet down
+      // to just that incident's own 35 vessels instead of both incidents'.
+      if (isolateToActiveIncident && activeIncident) {
+        return vesselFleetByIncident[activeIncident] || [];
+      }
+      return commercialFleet;
+    }
     if (focusedVesselMmsi)
       return commercialFleet.filter((v) => v.id === focusedVesselMmsi);
     const allTopVessels = topVesselsByIncident[attributionIncidentId] || [];
@@ -302,12 +441,44 @@ export const MapCanvas = ({
     const topMmsiSet = new Set(relevantVessels.map((v) => v.mmsi));
     return commercialFleet.filter((v) => topMmsiSet.has(v.id));
   }, [
+    showFleetTracks,
     commercialFleet,
     attributionIncidentId,
     focusedVesselMmsi,
     focusedCandidateId,
     forwardTrackIncidentId,
+    isolateToActiveIncident,
+    activeIncident,
+    vesselFleetByIncident,
   ]);
+
+  const highlightedVesselGeoJSON = useMemo(() => {
+    if (!highlightedVessel || !highlightedVessel.trajectory || highlightedVessel.trajectory.length < 2) {
+      return { track: EMPTY_FEATURE_COLLECTION, point: EMPTY_FEATURE_COLLECTION };
+    }
+    return {
+      track: {
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            properties: { id: highlightedVessel.id },
+            geometry: { type: "LineString", coordinates: highlightedVessel.trajectory },
+          },
+        ],
+      },
+      point: {
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            properties: { id: highlightedVessel.id, name: highlightedVessel.name },
+            geometry: { type: "Point", coordinates: highlightedVessel.coordinates },
+          },
+        ],
+      },
+    };
+  }, [highlightedVessel]);
 
   const vesselTracksGeoJSON = useMemo(() => {
     if (!visibleVesselFleet) return EMPTY_FEATURE_COLLECTION;
@@ -421,8 +592,8 @@ export const MapCanvas = ({
             layout: { visibility: "none" },
             paint: {
               "circle-radius": 7,
-              "circle-color": "#d97706",
-              "circle-opacity": 0.12,
+              "circle-color": "#2563eb",
+              "circle-opacity": 0.14,
               "circle-blur": 1,
             },
           });
@@ -436,31 +607,6 @@ export const MapCanvas = ({
               "circle-color": "#050403",
               "circle-opacity": 0.92,
             },
-          });
-
-          // 2. HINDCAST PARTICLES
-          map.addSource("hindcast-source", {
-            type: "geojson",
-            data: {
-              type: "FeatureCollection",
-              features: [
-                {
-                  type: "Feature",
-                  geometry: { type: "Point", coordinates: [33.1, 32.5] },
-                },
-                {
-                  type: "Feature",
-                  geometry: { type: "Point", coordinates: [33.12, 32.51] },
-                },
-              ],
-            },
-          });
-          map.addLayer({
-            id: "hindcast-points",
-            type: "circle",
-            source: "hindcast-source",
-            layout: { visibility: "none" },
-            paint: { "circle-color": "#f43f5e", "circle-radius": 4 },
           });
 
           // 3. AIS TRACKS
@@ -515,23 +661,66 @@ export const MapCanvas = ({
             },
           });
 
-          // 4. DIVERSION ROUTE
-          map.addSource("diversion-source", {
+          // 4.5 HIGHLIGHTED VESSEL — one spotlighted vessel's real track +
+          // position, for the commercial portal's Alibi Generator MMSI
+          // lookup. Empty sources until a lookup actually resolves one.
+          map.addSource("highlighted-vessel-track-source", {
             type: "geojson",
-            data: {
-              type: "Feature",
-              geometry: { type: "LineString", coordinates: [] },
+            data: highlightedVesselGeoJSON.track,
+          });
+          map.addLayer({
+            id: "highlighted-vessel-track-line",
+            type: "line",
+            source: "highlighted-vessel-track-source",
+            layout: { "line-join": "round", "line-cap": "round" },
+            paint: {
+              "line-color": "#7c3aed",
+              "line-width": 3,
+              "line-opacity": 0.9,
+            },
+          });
+          map.addSource("highlighted-vessel-point-source", {
+            type: "geojson",
+            data: highlightedVesselGeoJSON.point,
+          });
+          map.addLayer({
+            id: "highlighted-vessel-point-halo",
+            type: "circle",
+            source: "highlighted-vessel-point-source",
+            paint: {
+              "circle-radius": 12,
+              "circle-color": "#7c3aed",
+              "circle-opacity": 0.25,
+              "circle-blur": 0.6,
             },
           });
           map.addLayer({
-            id: "diversion-line",
-            type: "line",
-            source: "diversion-source",
-            layout: { visibility: "none" },
+            id: "highlighted-vessel-point-circle",
+            type: "circle",
+            source: "highlighted-vessel-point-source",
             paint: {
-              "line-color": "#10b981",
-              "line-width": 3,
-              "line-dasharray": [3, 3],
+              "circle-radius": 6,
+              "circle-color": "#7c3aed",
+              "circle-stroke-width": 2,
+              "circle-stroke-color": "#f5f3ff",
+            },
+          });
+          map.addLayer({
+            id: "highlighted-vessel-point-label",
+            type: "symbol",
+            source: "highlighted-vessel-point-source",
+            layout: {
+              "text-field": ["get", "name"],
+              "text-size": 10,
+              "text-offset": [0, 1.3],
+              "text-anchor": "top",
+              "text-allow-overlap": false,
+              "text-optional": true,
+            },
+            paint: {
+              "text-color": "#f5f3ff",
+              "text-halo-color": "#4c1d95",
+              "text-halo-width": 1.2,
             },
           });
 
@@ -740,6 +929,71 @@ export const MapCanvas = ({
             map.getCanvas().style.cursor = "";
           });
 
+          // 7. CLUSTER CANDIDATES — every backtracked candidate point for the
+          // open ATTRIBUTION incident (researcher portal only). Only created
+          // when the owning portal opts in, so the admin/commercial map
+          // never pays for or shows this layer.
+          if (showClusterCandidates) {
+            map.addSource("cluster-candidates-source", {
+              type: "geojson",
+              data: clusterCandidatesGeoJSON,
+            });
+            map.addLayer({
+              id: "cluster-candidates-circle",
+              type: "circle",
+              source: "cluster-candidates-source",
+              paint: {
+                "circle-radius": ["case", ["get", "isFocused"], 7, 3.5],
+                "circle-color": "#22d3ee",
+                "circle-opacity": ["case", ["get", "isFocused"], 0.95, 0.55],
+                "circle-stroke-width": ["case", ["get", "isFocused"], 2, 0],
+                "circle-stroke-color": "#0e7490",
+              },
+            });
+          }
+
+          // 8. REGIONAL HOTSPOT MARKERS — one labeled point per named
+          // location, shown only while ATTRIBUTION is open (researcher
+          // portal only), so it's clear at a glance which known hotspots sit
+          // near the backtracked density cluster.
+          if (showHotspotMarkers) {
+            map.addSource("hotspot-markers-source", {
+              type: "geojson",
+              data: hotspotMarkersGeoJSON,
+            });
+            map.addLayer({
+              id: "hotspot-markers-circle",
+              type: "circle",
+              source: "hotspot-markers-source",
+              layout: { visibility: "none" },
+              paint: {
+                "circle-radius": 5,
+                "circle-color": "#a855f7",
+                "circle-stroke-width": 1.5,
+                "circle-stroke-color": "#3b0764",
+              },
+            });
+            map.addLayer({
+              id: "hotspot-markers-label",
+              type: "symbol",
+              source: "hotspot-markers-source",
+              layout: {
+                visibility: "none",
+                "text-field": ["get", "name"],
+                "text-size": 10,
+                "text-offset": [0, 1.1],
+                "text-anchor": "top",
+                "text-allow-overlap": false,
+                "text-optional": true,
+              },
+              paint: {
+                "text-color": "#e9d5ff",
+                "text-halo-color": "#3b0764",
+                "text-halo-width": 1.2,
+              },
+            });
+          }
+
           // 6. DRAWN POLYGON (Manual Mapping)
           map.addSource("drawn-polygon-source", {
             type: "geojson",
@@ -862,6 +1116,60 @@ export const MapCanvas = ({
     map.on("styledata", updateAttributionSources);
     return () => map.off("styledata", updateAttributionSources);
   }, [attributionDensityGeoJSON, attributionVesselsGeoJSON]);
+
+  // Sync the highlighted (Alibi Generator) vessel's track + position
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const map = mapRef.current;
+
+    const updateHighlightedVessel = () => {
+      const trackSource = map.getSource("highlighted-vessel-track-source");
+      if (trackSource) trackSource.setData(highlightedVesselGeoJSON.track);
+      const pointSource = map.getSource("highlighted-vessel-point-source");
+      if (pointSource) pointSource.setData(highlightedVesselGeoJSON.point);
+    };
+
+    updateHighlightedVessel();
+    map.on("styledata", updateHighlightedVessel);
+    return () => map.off("styledata", updateHighlightedVessel);
+  }, [highlightedVesselGeoJSON]);
+
+  // Sync cluster candidate points (researcher portal only — no-op if the
+  // layer was never created because showClusterCandidates is false)
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const map = mapRef.current;
+
+    const updateClusterCandidates = () => {
+      const source = map.getSource("cluster-candidates-source");
+      if (source) source.setData(clusterCandidatesGeoJSON);
+    };
+
+    updateClusterCandidates();
+    map.on("styledata", updateClusterCandidates);
+    return () => map.off("styledata", updateClusterCandidates);
+  }, [clusterCandidatesGeoJSON]);
+
+  // Sync + show/hide the regional hotspot marker points (researcher portal
+  // only) — visible only while ATTRIBUTION is open for an incident.
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const map = mapRef.current;
+    const visibility = attributionIncidentId ? "visible" : "none";
+
+    const updateHotspotMarkers = () => {
+      const source = map.getSource("hotspot-markers-source");
+      if (source) source.setData(hotspotMarkersGeoJSON);
+      if (map.getLayer("hotspot-markers-circle"))
+        map.setLayoutProperty("hotspot-markers-circle", "visibility", visibility);
+      if (map.getLayer("hotspot-markers-label"))
+        map.setLayoutProperty("hotspot-markers-label", "visibility", visibility);
+    };
+
+    updateHotspotMarkers();
+    map.on("styledata", updateHotspotMarkers);
+    return () => map.off("styledata", updateHotspotMarkers);
+  }, [hotspotMarkersGeoJSON, attributionIncidentId]);
 
   // Sync vessel trajectories and live vessels
   useEffect(() => {
@@ -1007,12 +1315,25 @@ export const MapCanvas = ({
     return () => map.off("styledata", updateDrawnPolygon);
   }, [drawnPolygon, cursorCoordinate, isPolygonClosed, interactionMode]);
 
-  // Camera FlyTo logic (cleaned up duplicate block)
+  // Camera FlyTo logic (cleaned up duplicate block). When `trajectory` is
+  // present, fit the whole route in view instead of flying tight to a point —
+  // used for low-confidence vessels where a close zoom to one ping isn't
+  // representative of the overall route.
   useEffect(() => {
-    if (mapRef.current && panToCoordinate?.lat && panToCoordinate?.lon) {
+    if (!mapRef.current) return;
+    if (panToCoordinate?.trajectory?.length >= 2) {
+      const bbox = turf.bbox(turf.lineString(panToCoordinate.trajectory));
+      mapRef.current.fitBounds(
+        [
+          [bbox[0], bbox[1]],
+          [bbox[2], bbox[3]],
+        ],
+        { padding: 80, duration: 2000 },
+      );
+    } else if (panToCoordinate?.lat && panToCoordinate?.lon) {
       mapRef.current.flyTo({
         center: [panToCoordinate.lon, panToCoordinate.lat],
-        zoom: 10, // Zoomed in closer so you can see the GPS selection clearly
+        zoom: panToCoordinate.zoom ?? 10, // Zoomed in closer so you can see the GPS selection clearly
         essential: true,
         duration: 2000,
       });
@@ -1044,50 +1365,6 @@ export const MapCanvas = ({
     };
   }, [pickedCoordinate]);
 
-  // Handle Diversion Route
-  useEffect(() => {
-    if (!mapRef.current || useFallback) return;
-
-    const updateRoute = () => {
-      const source = mapRef.current.getSource("diversion-source");
-      if (!source) return;
-
-      if (showDiversionRoute && selectedVesselId) {
-        const vessel = commercialFleet.find((v) => v.id === selectedVesselId);
-        if (vessel) {
-          const coords = [
-            [vessel.lon, vessel.lat],
-            [vessel.lon + 0.5, vessel.lat + 0.8],
-            [vessel.lon + 1.2, vessel.lat + 0.9],
-          ];
-          source.setData({
-            type: "Feature",
-            geometry: { type: "LineString", coordinates: coords },
-          });
-          mapRef.current.setLayoutProperty(
-            "diversion-line",
-            "visibility",
-            "visible",
-          );
-        }
-      } else {
-        if (mapRef.current.getLayer("diversion-line")) {
-          mapRef.current.setLayoutProperty(
-            "diversion-line",
-            "visibility",
-            "none",
-          );
-        }
-      }
-    };
-
-    updateRoute();
-    mapRef.current.on("styledata", updateRoute);
-    return () => {
-      if (mapRef.current) mapRef.current.off("styledata", updateRoute);
-    };
-  }, [showDiversionRoute, selectedVesselId, commercialFleet, useFallback]);
-
   if (useFallback) {
     return (
       <FallbackLeaflet
@@ -1099,7 +1376,6 @@ export const MapCanvas = ({
         correlationMarker={correlationMarker}
         commercialFleet={commercialFleet}
         selectedVesselId={selectedVesselId}
-        showDiversionRoute={showDiversionRoute}
       />
     );
   }

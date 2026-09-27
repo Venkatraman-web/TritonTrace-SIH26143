@@ -12,10 +12,21 @@
 import Papa from "papaparse";
 import ow0008Url from "./incidents/ow-0008/forward_trajectory.csv?url";
 import ow0009Url from "./incidents/ow-0009/forward_trajectory.csv?url";
+import ow0008ParquetUrl from "./incidents/ow-0008/trajectory.parquet?url";
+import ow0009ParquetUrl from "./incidents/ow-0009/trajectory.parquet?url";
 
 const URLS_BY_INCIDENT = {
   "ow-0008": ow0008Url,
   "ow-0009": ow0009Url,
+};
+
+// The original OpenOil output this CSV was converted from — offered as a
+// download so a researcher can inspect the full-resolution forward run
+// (every member/particle field) in their own tooling rather than just the
+// lon/lat-per-step slice the app renders.
+export const forwardTrajectoryParquetUrlByIncident = {
+  "ow-0008": ow0008ParquetUrl,
+  "ow-0009": ow0009ParquetUrl,
 };
 
 const cache = new Map();

@@ -1,5 +1,6 @@
 import { useIncident } from "../../../context/IncidentContext";
 import { computeHotspotStatuses } from "../../../data/hotspotTimeline";
+import { formatUTCDateTime } from "../../../lib/dateFormat";
 import { FastForward, Play, Pause, AlertTriangle, ShieldAlert } from "lucide-react";
 
 const STATUS_STYLES = {
@@ -22,10 +23,9 @@ export const ForwardTrackPanel = () => {
   const currentParticles =
     forwardTrajectory.particlesByStep[Math.min(forwardTrackStep, maxStep)] || [];
   const statuses = computeHotspotStatuses(currentParticles);
-  const hotspots = Object.entries(statuses).map(([name, status]) => ({
-    name,
-    status,
-  }));
+  const hotspots = Object.entries(statuses)
+    .map(([name, status]) => ({ name, status }))
+    .filter((h) => h.status === "WATCH" || h.status === "CRITICAL");
 
   return (
     <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
@@ -66,7 +66,7 @@ export const ForwardTrackPanel = () => {
         </div>
         <span className="text-[10px] text-slate-500 font-mono text-center">
           {currentTimestamp
-            ? new Date(currentTimestamp).toLocaleString()
+            ? formatUTCDateTime(currentTimestamp)
             : "Loading trajectory…"}
         </span>
       </div>
@@ -75,6 +75,11 @@ export const ForwardTrackPanel = () => {
         <span className="text-[9px] font-bold text-slate-400 tracking-wider px-1">
           REGIONAL HOTSPOT STATUS AT +{forwardTrackStep}H
         </span>
+        {hotspots.length === 0 && (
+          <div className="px-3 py-2 rounded-md border border-slate-200 bg-slate-50 text-[10px] text-slate-400 text-center">
+            No hotspots in WATCH or CRITICAL status at this hour.
+          </div>
+        )}
         {hotspots.map((h) => (
           <div
             key={h.name}

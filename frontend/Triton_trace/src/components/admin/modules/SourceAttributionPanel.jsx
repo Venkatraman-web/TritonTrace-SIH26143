@@ -1,7 +1,10 @@
 import { seedIncidents } from "../../../data/seedIncidents";
+import { formatUTCDateTime } from "../../../lib/dateFormat";
 import { Radar } from "lucide-react";
 
 const HINDCAST_WINDOW_HOURS = 72;
+// Hourly checkpoints from T0 back to T-72h, inclusive of both endpoints.
+const HINDCAST_CHECKPOINT_COUNT = HINDCAST_WINDOW_HOURS + 1;
 
 export const SourceAttributionPanel = ({ incidentId }) => {
   const incident = seedIncidents.find((i) => i.incident_id === incidentId);
@@ -46,7 +49,10 @@ export const SourceAttributionPanel = ({ incidentId }) => {
           72H BACKTRACKING WINDOW
         </span>
         <span className="text-[10px] text-slate-900 font-mono font-semibold">
-          {windowStart.toLocaleString()} → {windowEnd.toLocaleString()}
+          {formatUTCDateTime(windowStart)} → {formatUTCDateTime(windowEnd)}
+        </span>
+        <span className="text-[9px] text-slate-500 font-mono mt-1">
+          {HINDCAST_CHECKPOINT_COUNT} hourly checkpoints
         </span>
       </div>
     </div>

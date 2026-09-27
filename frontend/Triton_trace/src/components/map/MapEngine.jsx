@@ -12,12 +12,6 @@ const INITIAL_LAYERS = [
     color: "bg-cyan-500",
   },
   {
-    id: "hindcast",
-    label: "Hindcast Particles",
-    active: true,
-    color: "bg-rose-500",
-  },
-  {
     id: "ais_tracks",
     label: "AIS Vessel Tracks",
     active: true,
@@ -50,12 +44,13 @@ export const MapEngine = ({ onEngineResolved, interactive = true }) => {
         onEngineResolved={onEngineResolved}
         layers={layers}
         commercialFleet={incidentVesselFleet}
+        isolateToActiveIncident
       />
 
       {/* Shared Floating Map UI */}
       <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-4">
         <LayerControl layers={layers} toggleLayer={toggleLayer} />
-        <MapLegend />
+        <MapLegend excludeIds={["hindcast_trajectory"]} />
       </div>
     </div>
   );

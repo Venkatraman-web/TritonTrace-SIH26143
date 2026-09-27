@@ -7,6 +7,8 @@
 import Papa from "papaparse";
 import ow0008Raw from "./incidents/ow-0008/AIS_top15_vessels.csv?raw";
 import ow0009Raw from "./incidents/ow-0009/AIS_top15_vessels.csv?raw";
+import ow0008Url from "./incidents/ow-0008/AIS_top15_vessels.csv?url";
+import ow0009Url from "./incidents/ow-0009/AIS_top15_vessels.csv?url";
 
 const parseTopVessels = (raw) =>
   Papa.parse(raw, { header: true, dynamicTyping: true, skipEmptyLines: true }).data.map(
@@ -34,6 +36,12 @@ const parseTopVessels = (raw) =>
 export const topVesselsByIncident = {
   "ow-0008": parseTopVessels(ow0008Raw),
   "ow-0009": parseTopVessels(ow0009Raw),
+};
+
+// The raw source file, offered as a direct download in the Review Dossier.
+export const topVesselsFileUrlByIncident = {
+  "ow-0008": ow0008Url,
+  "ow-0009": ow0009Url,
 };
 
 // One distinct color per rank (1-15) so a vessel's route, intersection

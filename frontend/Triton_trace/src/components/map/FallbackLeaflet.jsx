@@ -27,7 +27,6 @@ export const FallbackLeaflet = ({
   correlationMarker,
   commercialFleet = [],
   selectedVesselId = null,
-  showDiversionRoute = false,
 }) => {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
@@ -256,10 +255,15 @@ export const FallbackLeaflet = ({
     }
   }, [center, zoom]);
 
-  // Pan to requested incident or asset coordinate
+  // Pan to requested incident or asset coordinate. When `trajectory` is
+  // present, fit the whole route in view instead of flying tight to a point.
   useEffect(() => {
-    if (mapRef.current && panToCoordinate?.lat && panToCoordinate?.lon) {
-      mapRef.current.flyTo([panToCoordinate.lat, panToCoordinate.lon], 7.5, {
+    if (!mapRef.current) return;
+    if (panToCoordinate?.trajectory?.length >= 2) {
+      const latLngs = panToCoordinate.trajectory.map(([lon, lat]) => [lat, lon]);
+      mapRef.current.flyToBounds(latLngs, { padding: [60, 60], duration: 1.2 });
+    } else if (panToCoordinate?.lat && panToCoordinate?.lon) {
+      mapRef.current.flyTo([panToCoordinate.lat, panToCoordinate.lon], panToCoordinate.zoom ?? 7.5, {
         duration: 1.2,
       });
     }
@@ -323,32 +327,6 @@ export const FallbackLeaflet = ({
       }).addTo(mapRef.current);
     });
   }, [commercialFleet]);
-
-  // Diversion Route Update
-  const diversionRouteRef = useRef(null);
-  useEffect(() => {
-    if (!mapRef.current) return;
-    if (diversionRouteRef.current) {
-      diversionRouteRef.current.remove();
-      diversionRouteRef.current = null;
-    }
-    if (showDiversionRoute && selectedVesselId) {
-      const vessel = commercialFleet.find((v) => v.id === selectedVesselId);
-      if (vessel) {
-        // Curve north from vessel location
-        const coords = [
-          [vessel.lat, vessel.lon],
-          [vessel.lat + 0.8, vessel.lon + 0.5],
-          [vessel.lat + 0.9, vessel.lon + 1.2],
-        ];
-        diversionRouteRef.current = L.polyline(coords, {
-          color: "#10b981",
-          weight: 3,
-          dashArray: "5, 10",
-        }).addTo(mapRef.current);
-      }
-    }
-  }, [showDiversionRoute, selectedVesselId, commercialFleet]);
 
   // Render Drawn Polygon
   const drawnPolygonRef = useRef(null);

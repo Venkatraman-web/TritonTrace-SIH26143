@@ -6,7 +6,7 @@ import { ManualMappingPanel } from "./modules/ManualMappingPanel";
 import { SpillClassifier } from "./modules/SpillClassifier";
 
 export const NormalUserLeft = ({ onCollapse }) => {
-  const [activeTab, setActiveTab] = useState("report");
+  const [activeTab, setActiveTab] = useState("history");
 
   const tabs = [
     { id: "report", icon: Radio, label: "Report" },

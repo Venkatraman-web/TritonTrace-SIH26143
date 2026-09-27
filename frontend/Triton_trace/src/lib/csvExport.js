@@ -12,3 +12,13 @@ export const downloadCsv = (filename, rows) => {
   a.click();
   URL.revokeObjectURL(url);
 };
+
+// Downloads an already-existing static file (e.g. a bundled `?url` asset)
+// as-is, byte for byte — for raw source CSVs that shouldn't be
+// re-serialized through Papa.unparse.
+export const downloadFromUrl = (url, filename) => {
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+};

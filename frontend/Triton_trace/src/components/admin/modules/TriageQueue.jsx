@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useIncident } from "../../../context/IncidentContext";
 import { seedIncidents } from "../../../data/seedIncidents";
+import { formatUTCDateTime } from "../../../lib/dateFormat";
 import { DossierModal } from "./DossierModal";
 import {
   ShieldCheck,
@@ -98,7 +99,7 @@ export const TriageQueue = () => {
                     {report.id}
                   </span>
                   <span className="text-[10px] text-slate-500 font-mono mt-0.5">
-                    {new Date(report.createdAt).toLocaleString()}
+                    {formatUTCDateTime(report.createdAt)}
                   </span>
                 </div>
                 <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded text-[9px] font-bold">
@@ -155,6 +156,18 @@ export const TriageQueue = () => {
                     </button>
                   </div>
 
+                  {/* Export Options — kept above the ATTRIBUTION/FORWARD
+                      TRACK content below so it stays reachable without
+                      scrolling past whichever panel is open. */}
+                  <div className="flex gap-2 mb-4">
+                    <button
+                      onClick={() => setIsDossierOpen(true)}
+                      className="flex-1 flex items-center justify-center gap-2 py-2 rounded-md bg-slate-800 hover:bg-slate-900 border border-slate-900 text-white text-[10px] font-bold tracking-wider transition-colors shadow-sm"
+                    >
+                      <FileText className="w-3.5 h-3.5" /> REVIEW DOSSIER
+                    </button>
+                  </div>
+
                   {/* 🚨 DYNAMIC INLINE PANELS RENDERING HERE 🚨 */}
 
                   {/* Render Hindcast & AIS Matrix if Attribution is active */}
@@ -202,20 +215,10 @@ export const TriageQueue = () => {
 
                   {/* Render Forward Track panel if active */}
                   {activeAnalysisMode === "forward_track" && (
-                    <div className="flex flex-col p-3 bg-slate-50 border border-slate-200 rounded-md mb-4 shadow-inner">
+                    <div className="flex flex-col p-3 bg-slate-50 border border-slate-200 rounded-md shadow-inner">
                       <ForwardTrackPanel />
                     </div>
                   )}
-
-                  {/* Export Options */}
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setIsDossierOpen(true)}
-                      className="flex-1 flex items-center justify-center gap-2 py-2 rounded-md bg-slate-800 hover:bg-slate-900 border border-slate-900 text-white text-[10px] font-bold tracking-wider transition-colors shadow-sm"
-                    >
-                      <FileText className="w-3.5 h-3.5" /> REVIEW DOSSIER
-                    </button>
-                  </div>
                 </div>
               )}
             </div>

@@ -55,24 +55,32 @@ const clipVesselToIncidentWindow = (vessel, incidentDetectionTimestamp) => {
 // For each incident: its real top-15 AIS-correlated vessels (matched to their
 // real trajectory in the parsed AIS pool) plus the 20 vessels from that pool
 // geographically nearest to the incident's origin, both clipped to that
-// incident's 72h hindcast window. Merged across incidents and de-duplicated
-// by vessel id, since both incidents are shown on the map at once (see
-// allIncidentParticles above for the same pattern).
+// incident's 72h hindcast window. Returns both a flat de-duplicated merge
+// (for when both incidents are shown on the map at once — see
+// allIncidentParticles above for the same pattern) and each incident's own
+// set (for when only one incident is selected).
 const buildIncidentVesselFleet = (allVesselTracks) => {
-  if (!allVesselTracks || allVesselTracks.length === 0) return [];
+  if (!allVesselTracks || allVesselTracks.length === 0) {
+    return { merged: [], byIncident: {} };
+  }
 
   const trackByMmsi = new Map(allVesselTracks.map((v) => [v.id, v]));
   const selected = new Map();
+  const byIncident = {};
 
   seedIncidents.forEach((incident) => {
     const clip = (vessel) =>
       clipVesselToIncidentWindow(vessel, incident.detection_timestamp);
+    const thisIncidentVessels = new Map();
 
     const topVessels = topVesselsByIncident[incident.incident_id] || [];
     topVessels.forEach((tv) => {
       const track = trackByMmsi.get(tv.mmsi);
       const clipped = track && clip(track);
-      if (clipped) selected.set(clipped.id, clipped);
+      if (clipped) {
+        selected.set(clipped.id, clipped);
+        thisIncidentVessels.set(clipped.id, clipped);
+      }
     });
 
     // Clip first, then measure distance/bearing off the clipped position —
@@ -82,7 +90,7 @@ const buildIncidentVesselFleet = (allVesselTracks) => {
     // per sector that then turns out to have no data in this window.
     const origin = turf.point([incident.coordinates.lon, incident.coordinates.lat]);
     const candidates = allVesselTracks
-      .filter((v) => !selected.has(v.id))
+      .filter((v) => !thisIncidentVessels.has(v.id))
       .map((v) => clip(v))
       .filter(Boolean)
       .map((vessel) => {
@@ -116,10 +124,15 @@ const buildIncidentVesselFleet = (allVesselTracks) => {
     const nearest = [...bySector, ...leftovers]
       .slice(0, EXTRA_NEAREST_VESSELS_PER_INCIDENT)
       .map((c) => c.vessel);
-    nearest.forEach((vessel) => selected.set(vessel.id, vessel));
+    nearest.forEach((vessel) => {
+      selected.set(vessel.id, vessel);
+      thisIncidentVessels.set(vessel.id, vessel);
+    });
+
+    byIncident[incident.incident_id] = Array.from(thisIncidentVessels.values());
   });
 
-  return Array.from(selected.values());
+  return { merged: Array.from(selected.values()), byIncident };
 };
 
 const IncidentContext = createContext();
@@ -195,11 +208,11 @@ export const IncidentProvider = ({ children }) => {
     });
   }, []);
 
-  // Top-15 AIS suspects + 20 nearest per incident, both incidents combined.
-  const incidentVesselFleet = useMemo(
-    () => buildIncidentVesselFleet(allVesselTracks),
-    [allVesselTracks],
-  );
+  // Top-15 AIS suspects + 20 nearest per incident. `incidentVesselFleet` is
+  // both incidents merged (shown when no single incident is selected);
+  // `vesselFleetByIncident` is each incident's own set (shown once one is).
+  const { merged: incidentVesselFleet, byIncident: vesselFleetByIncident } =
+    useMemo(() => buildIncidentVesselFleet(allVesselTracks), [allVesselTracks]);
 
   // 3. Admin / Investigator Analytical State
   const [activeAnalysisMode, setActiveAnalysisMode] = useState("none"); // 'none' | 'attribution' | 'forward_track'
@@ -326,6 +339,12 @@ export const IncidentProvider = ({ children }) => {
     forwardTrajectory,
     commercialFleet,
     incidentVesselFleet,
+    vesselFleetByIncident,
+    // The full unfiltered AIS pool (~2000 vessels) — needed wherever a
+    // researcher/operator looks up an arbitrary MMSI (e.g. the commercial
+    // portal's Alibi Generator) that isn't necessarily one of the
+    // already-curated commercialFleet/incidentVesselFleet subsets.
+    allVesselTracks,
   };
 
   return (

@@ -1,154 +1,255 @@
-import { useState, useEffect } from "react";
-import { ShieldCheck, AlertTriangle, Route as RouteIcon } from "lucide-react";
-import { jsPDF } from "jspdf";
-import * as turf from '@turf/turf';
-import geofencesData from '../../utils/regional_alert_geofences.json';
+import { useState } from "react";
+import { ShieldCheck, AlertTriangle, PanelLeftClose, MapPin } from "lucide-react";
+import { AlibiGenerator } from "./AlibiGenerator";
+import { StatCard } from "../ui/StatCard";
+import { useIncident } from "../../context/IncidentContext";
+import { seedIncidents } from "../../data/seedIncidents";
+import { formatUTCDateTime } from "../../lib/dateFormat";
+import { displayScore } from "../../data/aisTopVessels";
+import { PI_CLUBS, findVesselsByPiClub } from "../../data/piClubData";
+import { computeVesselLiability, formatUsdCompact } from "../../lib/itopfLiability";
 
-export function EnterpriseDashboard({ showDiversionRoute, onToggleDiversion, selectedVesselId, selectedVessel }) {
-  const [liabilityData, setLiabilityData] = useState(null);
+const MODES = [
+  { id: "alibi", label: "Alibi Generator", icon: ShieldCheck, color: "text-blue-600" },
+  { id: "pni", label: "P&I Risk Assessor", icon: AlertTriangle, color: "text-rose-600" },
+];
 
-  useEffect(() => {
-    setLiabilityData(null);
-  }, [selectedVesselId]);
+export function EnterpriseDashboard({
+  onHighlightVessel,
+  onHighlightGeofence,
+  onCollapse,
+}) {
+  const [mode, setMode] = useState("alibi");
+  const {
+    activeIncident,
+    setActiveIncident,
+    setActiveAnalysisMode,
+    setPanToCoordinate,
+    allVesselTracks,
+  } = useIncident();
+  const [selectedPiClub, setSelectedPiClub] = useState("");
+  const [selectedLiabilityMmsi, setSelectedLiabilityMmsi] = useState(null);
 
-  const handleExportPDF = () => {
-    const doc = new jsPDF();
-    const timestamp = new Date().toISOString();
-    
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.text("NON-INVOLVEMENT AUDIT: ALIBI VERIFICATION", 20, 20);
-    
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(12);
-    doc.text(`Generated: ${timestamp}`, 20, 30);
-    doc.text(`Vessel ID / MMSI: ${selectedVesselId || "N/A"}`, 20, 40);
-    doc.text("Status: MATHEMATICALLY CLEARED", 20, 50);
-    
-    doc.line(20, 55, 190, 55);
-    
-    doc.setFontSize(10);
-    doc.text("This automated audit verifies that the selected vessel maintained a", 20, 65);
-    doc.text("spatial clearance of >15nm from the estimated slick origin at T-0.", 20, 72);
-    doc.text("Trajectory consistency: HIGH.", 20, 79);
-    
-    doc.save(`Alibi_Audit_${selectedVesselId || "Vessel"}.pdf`);
+  const handleSelectSpillForPi = (incident) => {
+    setActiveIncident(incident.incident_id);
+    setActiveAnalysisMode("attribution");
+    setPanToCoordinate({ lat: incident.coordinates.lat, lon: incident.coordinates.lon });
+    onHighlightVessel(null);
+    onHighlightGeofence(null);
+    setSelectedLiabilityMmsi(null);
   };
 
-  const handleCalculateLiability = () => {
-    let maxMultiplier = 1;
-    let riskStatus = "SAFE TRANSIT ROUTE";
-    let statusColor = "text-emerald-600";
-    
-    if (selectedVessel?.trajectory?.length >= 2 && geofencesData?.features) {
-      const routeLine = turf.lineString(selectedVessel.trajectory.map(pt => [pt[1], pt[0]]));
-      
-      geofencesData.features.forEach(zone => {
-        if (turf.booleanIntersects(routeLine, zone)) {
-          const mult = zone.properties.liability_multiplier || 1.5;
-          if (mult > maxMultiplier) {
-            maxMultiplier = mult;
-            const name = zone.properties.name || "ZONE";
-            const level = zone.properties.zone_level || "Watch Zone";
-            riskStatus = `TRAJECTORY INTERSECTS ${name.toUpperCase()} (${level})`;
-            statusColor = level.includes('Critical') ? "text-rose-600" : "text-amber-600";
-          }
-        }
-      });
+  const handleSelectPiClub = (club) => {
+    setSelectedPiClub(club);
+    onHighlightVessel(null);
+    onHighlightGeofence(null);
+    setSelectedLiabilityMmsi(null);
+  };
+
+  const activeSpill = seedIncidents.find((inc) => inc.incident_id === activeIncident);
+  const flaggedVessels = selectedPiClub && activeIncident ? findVesselsByPiClub(activeIncident, selectedPiClub) : [];
+  // Liability is per vessel (its own route decides the hotspot multiplier)
+  // even though the underlying slick mass is the same for every vessel
+  // implicated in the same incident.
+  const flaggedVesselsWithLiability = flaggedVessels.map((v) => {
+    const track = allVesselTracks.find((t) => t.id === v.mmsi);
+    const liability =
+      track?.trajectory?.length >= 2 && activeSpill
+        ? computeVesselLiability(track.trajectory, activeSpill.slick_area_sqkm)
+        : null;
+    return { ...v, track, liability };
+  });
+
+  // Shows this vessel's real track on the map and, if its route actually
+  // hits a geofence, calls out that specific zone — the "which hotspot
+  // does it hit" the liability figure is based on.
+  const handleSelectVesselForLiability = (v) => {
+    if (v.track) {
+      onHighlightVessel(v.track);
+      setPanToCoordinate({ trajectory: v.track.trajectory });
     }
-
-    if (maxMultiplier === 1 && selectedVessel) {
-      if (selectedVessel.status === 'CRITICAL') {
-          maxMultiplier = 10;
-          riskStatus = "TRAJECTORY INTERSECTS CRITICAL STRIKE ZONE";
-          statusColor = "text-rose-600";
-      } else if (selectedVessel.status === 'ELEVATED WATCH') {
-          maxMultiplier = 3;
-          riskStatus = "TRAJECTORY INTERSECTS WATCH ZONE";
-          statusColor = "text-amber-600";
-      }
-    }
-
-    const speedFactor = selectedVessel?.speed ? parseFloat(selectedVessel.speed) : 12.0;
-    const dynamicBasePenalty = 1000000 + (speedFactor * 125000);
-    
-    const areaPenalty = 25000 * 14.6;
-    const totalExposure = (dynamicBasePenalty * maxMultiplier) + areaPenalty;
-    const formattedExposure = `$${(totalExposure / 1000000).toFixed(2)}M`;
-
-    setLiabilityData({
-      totalExposure: formattedExposure,
-      statusText: riskStatus,
-      colorClass: statusColor,
-      multiplier: maxMultiplier
-    });
+    const asset = v.liability?.threatenedAsset;
+    onHighlightGeofence(asset && !asset.startsWith("Open Sea") ? asset : null);
+    setSelectedLiabilityMmsi(v.mmsi);
   };
 
   return (
-    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-6xl z-30 flex flex-row bg-white border border-slate-200 rounded-lg shadow-2xl divide-x divide-slate-200 text-slate-900">
-      {/* Column 1 */}
-      <div className="flex-1 p-4">
-        <div className="flex items-center space-x-2 text-blue-600 font-bold text-xs mb-2">
-          <ShieldCheck className="h-4 w-4" />
-          <span>ALIBI GENERATOR</span>
-        </div>
-        <p className="text-sm mb-4">Non-Involvement Audit: Vessel clearance verified at T-0.</p>
-        <button 
-          onClick={handleExportPDF}
-          className="bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 px-3 py-2 rounded text-xs font-semibold transition"
+    <aside className="w-full h-full bg-white flex flex-col shrink-0 border-r border-slate-200 text-slate-900">
+      <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3">
+        <span className="text-xs font-bold tracking-wider text-slate-900 uppercase">
+          Commercial Operations
+        </span>
+        <button
+          onClick={onCollapse}
+          className="shrink-0 p-1.5 text-slate-400 hover:text-slate-800 hover:bg-slate-200 rounded transition-colors"
+          title="Collapse Panel"
         >
-          EXPORT AUDIT (PDF)
+          <PanelLeftClose className="w-4 h-4" />
         </button>
       </div>
 
-      {/* Column 2 */}
-      <div className="flex-1 p-4">
-        <div className="flex items-center space-x-2 text-rose-600 font-bold text-xs mb-2">
-          <AlertTriangle className="h-4 w-4" />
-          <span>P&amp;I RISK ASSESSOR</span>
-        </div>
-        {!liabilityData ? (
-          <>
-            <p className="text-sm mb-4">Evaluate trajectory against regional alert geofences and slick perimeter.</p>
-            <button 
-              onClick={handleCalculateLiability} 
-              className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 rounded px-3 py-2 text-xs w-full font-bold transition-colors"
+      <div className="flex items-center gap-2 p-3 border-b border-slate-200 bg-slate-50 shrink-0">
+        {MODES.map((m) => {
+          const Icon = m.icon;
+          const isActive = mode === m.id;
+          return (
+            <button
+              key={m.id}
+              onClick={() => setMode(m.id)}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-[11px] font-bold tracking-wide transition-colors ${
+                isActive
+                  ? `bg-white shadow-sm border border-slate-200 ${m.color}`
+                  : "text-slate-400 hover:text-slate-600"
+              }`}
             >
-              CALCULATE P&amp;I
+              <Icon className="h-3.5 w-3.5" />
+              {m.label}
             </button>
-          </>
-        ) : (
-          <>
-            <div className={`text-2xl font-bold mt-2 ${liabilityData.colorClass}`}>
-              {liabilityData.totalExposure} EST. EXPOSURE
+          );
+        })}
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+        {mode === "alibi" && <AlibiGenerator onHighlightVessel={onHighlightVessel} />}
+
+        {mode === "pni" && (
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2 text-rose-600 font-bold text-xs">
+              <AlertTriangle className="h-4 w-4" />
+              <span>P&amp;I RISK ASSESSOR</span>
             </div>
-            <div className="text-xs font-semibold text-slate-500 mt-1">
-              {liabilityData.statusText} (x{liabilityData.multiplier} MULTIPLIER)
+
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[10px] font-bold text-slate-500 tracking-wider uppercase">
+                1. Select your P&amp;I club
+              </span>
+              <select
+                value={selectedPiClub}
+                onChange={(e) => handleSelectPiClub(e.target.value)}
+                className="px-2.5 py-2 text-xs font-mono border border-slate-200 rounded-md bg-white text-slate-800"
+              >
+                <option value="">Choose a club…</option>
+                {PI_CLUBS.map((club) => (
+                  <option key={club} value={club}>
+                    {club}
+                  </option>
+                ))}
+              </select>
             </div>
-            <button 
-              onClick={() => setLiabilityData(null)}
-              className="mt-3 text-[10px] text-slate-400 hover:text-slate-600 underline uppercase"
-            >
-              Recalculate
-            </button>
-          </>
+
+            {selectedPiClub && (
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[10px] font-bold text-slate-500 tracking-wider uppercase">
+                  2. Select an oil spill
+                </span>
+                <div className="grid grid-cols-2 gap-2">
+                  {seedIncidents.map((inc) => {
+                    const isActive = activeIncident === inc.incident_id;
+                    return (
+                      <button
+                        key={inc.incident_id}
+                        onClick={() => handleSelectSpillForPi(inc)}
+                        className={`flex flex-col items-start p-2.5 rounded-md border text-left transition-all ${
+                          isActive
+                            ? "border-rose-500 bg-rose-50 shadow-inner"
+                            : "border-slate-200 bg-white hover:bg-slate-50"
+                        }`}
+                      >
+                        <span
+                          className={`font-mono text-xs font-bold ${isActive ? "text-rose-700" : "text-slate-800"}`}
+                        >
+                          {inc.incident_id}
+                        </span>
+                        <span className="text-[10px] text-slate-500">
+                          {inc.slick_area_sqkm} km² · {formatUTCDateTime(inc.detection_timestamp)}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {selectedPiClub &&
+              activeIncident &&
+              (flaggedVessels.length > 0 ? (
+                <div className="flex flex-col gap-2">
+                  <div className="text-[10px] text-rose-700 bg-rose-50 border border-rose-200 rounded px-2 py-1.5 font-semibold">
+                    {flaggedVessels.length} {selectedPiClub}-insured vessel
+                    {flaggedVessels.length > 1 ? "s" : ""} flagged as a probable
+                    source for {activeIncident}.
+                  </div>
+                  {flaggedVesselsWithLiability.map((v) => (
+                    <button
+                      key={v.mmsi}
+                      type="button"
+                      onClick={() => handleSelectVesselForLiability(v)}
+                      className={`flex flex-col gap-2 p-3 rounded-md border text-left transition-colors ${
+                        selectedLiabilityMmsi === v.mmsi
+                          ? "border-rose-400 bg-rose-50 shadow-inner"
+                          : "border-slate-200 bg-slate-50 hover:bg-slate-100"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-xs font-bold text-slate-800">
+                          {v.vesselName}
+                        </span>
+                        {selectedLiabilityMmsi === v.mmsi ? (
+                          <span className="flex items-center gap-1 text-[10px] text-violet-700">
+                            <MapPin className="w-3 h-3" /> Shown on map
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-slate-500">MMSI {v.mmsi}</span>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <StatCard
+                          label="AIS5 SCORE"
+                          value={`${displayScore(v.attributionScore)}%`}
+                        />
+                        <StatCard label="RANK" value={`#${v.rank} of 15`} />
+                        <StatCard
+                          label="CLOSEST ENCOUNTER"
+                          value={`${v.minSyncDistanceKm.toFixed(2)} km`}
+                        />
+                        <StatCard
+                          label="CLOSE ENCOUNTERS"
+                          value={v.exactCloseEncounterCount}
+                        />
+                      </div>
+
+                      {v.liability && (
+                        <div className="flex flex-col gap-1.5 mt-1 pt-2 border-t border-slate-200">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[9px] font-bold text-slate-400 tracking-wider uppercase">
+                              Estimated liability
+                            </span>
+                            <span className="text-[9px] font-bold text-slate-500">
+                              {v.liability.itopfTier.tier} · {v.liability.itopfTier.label}
+                            </span>
+                          </div>
+                          <div className="text-xl font-bold text-rose-700">
+                            {formatUsdCompact(v.liability.totalLiabilityUsd)}
+                          </div>
+                          <div className="text-[10px] text-slate-500">
+                            {v.liability.hotspotMultiplier.toFixed(1)}x hotspot multiplier ·{" "}
+                            {v.liability.threatenedAsset}
+                          </div>
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-2 py-1.5">
+                  No {selectedPiClub} vessels appear in this incident's
+                  top-15 probable sources.
+                </div>
+              ))}
+          </div>
         )}
-      </div>
 
-      {/* Column 3 */}
-      <div className="flex-1 p-4">
-        <div className="flex items-center space-x-2 text-emerald-600 font-bold text-xs mb-2">
-          <RouteIcon className="h-4 w-4" />
-          <span>DYNAMIC REROUTING</span>
-        </div>
-        <p className="text-sm mb-4">Spill Avoidance: Compute 15nm safe-transit fairway.</p>
-        <button 
-          onClick={onToggleDiversion}
-          className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 px-3 py-2 rounded text-xs font-semibold transition"
-        >
-          EXECUTE SAFE DIVERSION
-        </button>
       </div>
-    </div>
+    </aside>
   );
 }

@@ -1,5 +1,6 @@
 import { useIncident } from "../../../context/IncidentContext";
 import { originCandidatesByIncident } from "../../../data/originCandidates";
+import { formatUTCDateTime } from "../../../lib/dateFormat";
 import { MapPin, Navigation } from "lucide-react";
 
 export const ClusterOriginMatrix = ({ incidentId }) => {
@@ -68,7 +69,7 @@ export const ClusterOriginMatrix = ({ incidentId }) => {
                     )}
                   </div>
                   <span className="text-[10px] text-slate-500 font-mono font-semibold">
-                    {new Date(candidate.candidateTimestamp).toLocaleString()}
+                    {formatUTCDateTime(candidate.candidateTimestamp)}
                   </span>
                 </div>
 

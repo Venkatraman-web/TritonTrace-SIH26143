@@ -1,0 +1,16 @@
+RUN_VALIDATION -- SAR ow-0008 production packaging run
+
+[OK] exactly 73 hourly checkpoints (T0..T72)
+[OK] T0 present and equals the observation timestamp
+[OK] T72 present and equals T0 - 72h
+[OK] existing T36-with-AIS scores reproduced exactly (vs. AIS6_candidate_scores.csv)
+[OK] AIS-5 Top-15 reproduced exactly (same rank/mmsi/score, read not recomputed)
+[OK] no AIS data fabricated/interpolated (all AIS fields read directly from result/AIS_*/AIS3-5_* files)
+[OK] no candidate values changed (fresh sweep count matches AIS6's own cached count)
+[OK] no per-frame heatmap normalization (single fixed PowerNorm vmax reused across all panels)
+[OK] common heatmap scale across all 9 chronological panels
+[OK] all output files written only under output/<SAR_ID>/
+[OK] all tables are plain CSV/TXT, readable without opening a notebook
+[OK] full test suite passes
+
+test suite: Ran 780 tests in 105.312s

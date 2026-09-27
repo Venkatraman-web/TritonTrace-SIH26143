@@ -1,0 +1,45 @@
+SOURCE-ORIGIN SUMMARY -- SAR ow-0009 (April 2019 event)
+
+observation time (T0): 2019-04-28T15:38:41.000000000
+backtracking window: 72 hours, 1-hour checkpoint interval, T72 = 2019-04-25T15:38:41.000000000
+number of checkpoints: 73 (T0..T72 inclusive)
+
+STRONGEST SOURCE-CONSISTENT REGION (model-derived, NOT a confirmed source):
+  dominant cluster: cluster0000
+  centroid: lat=34.62799, lon=35.16738
+  n_members: 1632 / 1647 candidates (99.1% of all candidates)
+  spatial_radius_km (geometric extent): 54.22
+  n_distinct_timestamps supporting this cluster: 72 / 72
+  temporal_span_hours: 71.0
+  peak_source_score: 3.0924 (evidence-ranking score, NOT a probability)
+
+GEOGRAPHIC EXTENT OF THE CANDIDATE CORRIDOR:
+  latitude  [34.41196, 34.99996]
+  longitude [34.82572, 35.61772]
+
+UNCERTAINTY (T38, unmodified):
+  uncertainty_radius_km (P90 spatial spread): 26.06
+  temporal_uncertainty_hours: 16.62
+  candidate_stability_percent (200-replicate bootstrap): 100.0
+  ais_status for dominant cluster: available
+
+REGION SHAPE -- WHY THE UNCERTAINTY RADIUS IS LARGE (diagnostic, not a new metric):
+  This cluster spans 72/72 hourly checkpoints (71.0h) -- essentially the model's ENTIRE 72h backward window, not a localized hotspot.
+  T37 clusters with DBSCAN(eps=2.0km, min_samples=1): consecutive hourly checkpoints' top candidates step by only 1.27km on average (max 5.99km); 7/71 steps exceed eps, so the whole 72h chain links transitively into ONE cluster via single-linkage chaining,
+  even though its two ends are 71.3km apart. The 26.1km uncertainty_radius_km therefore reflects the SPATIAL SPREAD OF THE WHOLE BACKWARD-DRIFT CORRIDOR, not a tight pinpoint estimate of a single origin location.
+  Recent checkpoints (near T0) are visibly far more localized than older ones -- see potential_source_region_timeline.png and possible_source_origins_top.csv's own backtrack_hours ordering.
+
+LIMITATIONS:
+  - This is a POTENTIAL / source-consistent region derived from backward particle
+    transport + multi-feature evidence ranking (Support, Persistence, Convergence,
+    Dispersion, AIS where available). It is NOT a confirmed or proven source location.
+  - The dominant cluster's spatial extent is inflated by single-linkage chaining across the full 72h
+    window (see REGION SHAPE above) -- treat the uncertainty_radius_km as a corridor-scale figure, not
+    a localized search radius.
+  - source_score has no fixed probabilistic interpretation and no calibrated upper bound.
+  - Only 6 of the configured 50 stochastic forcing members were run (memory/runtime
+    constraint, documented since Stage III sign-off); dispersion spread may be
+    under-sampled relative to the full ensemble design.
+  - data/wind.nc is not read by Stage III (windage excluded by design, T01.5).
+  - T33's dispersion-evidence age-correlation and T30's initial-bias evidence are
+    reported for transparency only and are not used to re-weight or re-rank candidates.

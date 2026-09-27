@@ -1,0 +1,83 @@
+FINAL RESEARCH SUMMARY -- SAR ow-0009, April 2019 oil-spill event
+======================================================================
+
+A. EVENT
+   SAR_ID: ow-0009 (from database_payload.json image_filename, extension stripped)
+   observation time (T0): 2019-04-28T15:38:41.000000000
+   observed slick bounding box: lat [34.55878, 34.65357], lon [34.97099, 34.80772]
+
+B. BACKTRACKING CONFIGURATION
+   backward window: 72 hours, 1-hour checkpoint interval, 73 checkpoints (T0..T72)
+   particles: 371, forcing members: 6, Stage III physics/timestep: unchanged (T00-T13.5)
+   candidates generated: 1647 (T14-T17, unmodified)
+
+C. POTENTIAL SOURCE-ORIGIN REGION (model-derived, source-consistency evidence -- NOT confirmed)
+   dominant cluster cluster0000: centroid lat=34.62799, lon=35.16738
+   1632/1647 candidates (99.1%), spanning 72/72 hourly checkpoints (71.0h)
+   T38 uncertainty_radius_km (P90): 26.06, temporal_uncertainty_hours: 16.62, bootstrap stability: 100.0%
+   NOTE -- this radius is a CORRIDOR, not a pinpoint: the dominant cluster spans essentially the
+   model's entire 72h backward window (consecutive-hour top candidates step by only 1.27km on average, well under T37's 2.0km linkage threshold, so single-linkage chaining links the whole 72h trajectory -- whose two ends are 71.3km apart -- into one cluster). Recent (near-T0) candidates are far more
+   localized than older ones -- see potential_source_region_timeline.png.
+
+D. STRONGEST SOURCE CANDIDATES (top-5 by source_score, one per checkpoint's own #1)
+   backtrack_hours=69  candidate_id=2019-04-25T18:38:41_cand000  lat=34.89196 lon=35.56072  source_score=3.0924  cluster=cluster0000
+   backtrack_hours=71  candidate_id=2019-04-25T16:38:41_cand000  lat=34.90696 lon=35.57572  source_score=3.0821  cluster=cluster0000
+   backtrack_hours=70  candidate_id=2019-04-25T17:38:41_cand000  lat=34.89796 lon=35.56372  source_score=3.0172  cluster=cluster0000
+   backtrack_hours=68  candidate_id=2019-04-25T19:38:41_cand000  lat=34.87996 lon=35.54872  source_score=3.0011  cluster=cluster0000
+   backtrack_hours=67  candidate_id=2019-04-25T20:38:41_cand000  lat=34.87396 lon=35.54272  source_score=2.9059  cluster=cluster0000
+
+E. TOP-15 AIS VESSEL CANDIDATES (AIS-5 ranking, unmodified evidence-ranking score)
+   # 1  SEASPAN CARRIER U94    mmsi=211482965  AIS5_score=0.3696  min_dist=0.11km  coverage=0.917
+   # 2  MT SPIRIT Y80          mmsi=370978298  AIS5_score=0.3297  min_dist=2.09km  coverage=1.000
+   # 3  OCEAN GLORY U47        mmsi=352510260  AIS5_score=0.3088  min_dist=11.75km  coverage=0.653
+   # 4  NORDIC SPIRIT W40      mmsi=256383837  AIS5_score=0.2602  min_dist=3.43km  coverage=0.208
+   # 5  PACIFIC JEWEL Z77      mmsi=352844541  AIS5_score=0.2292  min_dist=5.96km  coverage=1.000
+   # 6  MV EAGLE B40           mmsi=352291216  AIS5_score=0.2206  min_dist=15.11km  coverage=0.667
+   # 7  MINERVA NAVIGATOR J50  mmsi=538570865  AIS5_score=0.2014  min_dist=16.03km  coverage=0.528
+   # 8  PACIFIC PIONEER H50    mmsi=370393403  AIS5_score=0.1879  min_dist=16.72km  coverage=0.986
+   # 9  EVER SPIRIT Y77        mmsi=352969548  AIS5_score=0.1815  min_dist=9.19km  coverage=0.722
+   #10  PACIFIC LEADER R36     mmsi=636844994  AIS5_score=0.1678  min_dist=8.34km  coverage=0.694
+   #11  OCEAN HORIZON S52      mmsi=311228164  AIS5_score=0.1349  min_dist=20.03km  coverage=0.278
+   #12  MT GLORY R38           mmsi=538688104  AIS5_score=0.1115  min_dist=21.94km  coverage=0.542
+   #13  MAERSK OASIS G89       mmsi=352546934  AIS5_score=0.0990  min_dist=23.12km  coverage=0.556
+   #14  OCEAN TRADER A62       mmsi=636279196  AIS5_score=0.0788  min_dist=25.41km  coverage=0.042
+   #15  MSC GLORY U28          mmsi=235647063  AIS5_score=0.0741  min_dist=26.02km  coverage=0.583
+
+F. SPATIAL-TEMPORAL EVIDENCE
+   14/15 top-15 AIS vessels' strongest matched candidate falls inside the dominant source-consistent cluster (cluster0000).
+   This is a spatial-temporal co-occurrence observation, not evidence of causation.
+
+G. AIS DATA COVERAGE
+   ow-0009 (April 2019) -- AIS event-window summary
+   event window: T72=2019-04-25 15:38:41+00:00 .. T0=2019-04-28 15:38:41+00:00
+   project AOI: N=36.372 W=27.121 S=30.1875 E=36.088
+   
+   vessels with >=1 AIS position inside the event window (before AOI filter): 218
+   vessels entering the AOI during the event window: 217
+   AIS observations in event window + AOI: 8017
+   usable tracks (>=2 observations): 213
+   single-observation tracks: 4
+   tracks with >=1 gap exceeding 6.0h: 0
+   flagged implausible positional jumps: 0
+
+H. UNCERTAINTY
+   T38 (unmodified): spatial_radius (P90, bootstrap-free geometric spread), temporal_uncertainty_hours,
+   candidate_stability_percent (200-replicate bootstrap resampling of Support). None of these are
+   confidence intervals on a probability -- they describe the SPREAD/STABILITY of the evidence-ranking
+   result itself under resampling, not a calibrated statistical confidence level.
+
+I. LIMITATIONS
+   1. MODEL-DERIVED POTENTIAL SOURCE REGION (sections C/D) and AIS VESSEL EVIDENCE RANKING
+      (section E) are SEPARATE, INDEPENDENTLY-COMPUTED analyses. AIS evidence contributes to
+      the candidate source_score only via T36's reserved w_ais=0.20 weight (AIS-6); AIS-5's own
+      vessel ranking is never re-derived from or by the candidate score.
+   2. This system produces EVIDENCE RANKINGS and SOURCE-CONSISTENCY ANALYSIS, not calibrated
+      probability and not causal proof of spill origin or vessel responsibility.
+   3. Only 6 of 50 configured stochastic forcing members were run (documented since Stage III).
+   4. AIS evidence is available for a minority of candidates (real-data coverage limit, not a
+      design choice) -- see possible_source_origins.csv's own ais_available column for the exact fraction.
+   5. data/wind.nc is not used by Stage III (windage excluded by design, T01.5).
+   6. The dominant cluster's ~26km radius reflects single-linkage chaining across the full 72h
+      backward-drift corridor (T37's DBSCAN eps=2km links every consecutive-hour step, which all
+      measure well under 2km) -- it is a corridor-scale figure, not a localized search radius. See
+      section C and source_origin_summary.txt's REGION SHAPE note.

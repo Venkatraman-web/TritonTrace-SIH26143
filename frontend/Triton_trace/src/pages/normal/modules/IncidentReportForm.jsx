@@ -131,8 +131,8 @@ export const IncidentReportForm = () => {
               onClick={togglePicking}
               className={`flex-1 flex items-center justify-center text-xs font-bold px-3 py-2 rounded-md border transition-colors shadow-sm ${
                 isPicking
-                  ? "bg-brand-50 border-brand-300 text-brand-700"
-                  : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                  ? "bg-brand-500/10 border-brand-500/40 text-brand-300"
+                  : "bg-navy-900 border-navy-800 text-slate-300 hover:bg-navy-800"
               }`}
             >
               <Target className="w-3.5 h-3.5 mr-2" />
@@ -143,25 +143,25 @@ export const IncidentReportForm = () => {
               type="button"
               onClick={handleAutoDetect}
               disabled={isDetecting}
-              className="flex-1 flex items-center justify-center text-xs font-bold px-3 py-2 rounded-md bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-70"
+              className="flex-1 flex items-center justify-center text-xs font-bold px-3 py-2 rounded-md bg-navy-900 border border-navy-800 text-slate-300 hover:bg-navy-800 transition-colors shadow-sm disabled:opacity-70"
             >
               {isDetecting ? (
-                <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin text-brand-600" />
+                <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin text-brand-400" />
               ) : (
-                <LocateFixed className="w-3.5 h-3.5 mr-2 text-brand-600" />
+                <LocateFixed className="w-3.5 h-3.5 mr-2 text-brand-400" />
               )}
               {isDetecting ? "ACQUIRING..." : "AUTO GPS"}
             </button>
           </div>
 
           {geoError && (
-            <div className="text-[10px] font-bold mt-1 p-2 border rounded bg-rose-50 border-rose-200 text-rose-700">
+            <div className="text-[10px] font-bold mt-1 p-2 border rounded bg-rose-500/10 border-rose-500/30 text-rose-300">
               {geoError}
             </div>
           )}
           {pickedCoordinate && (
-            <div className="flex items-center gap-2 p-2.5 bg-brand-50 border border-brand-200 rounded-md text-xs font-mono font-bold text-brand-800">
-              <MapPin className="w-4 h-4 text-brand-600" />
+            <div className="flex items-center gap-2 p-2.5 bg-brand-500/10 border border-brand-500/30 rounded-md text-xs font-mono font-bold text-brand-300">
+              <MapPin className="w-4 h-4 text-brand-400" />
               {pickedCoordinate.lat.toFixed(4)},{" "}
               {pickedCoordinate.lon.toFixed(4)}
             </div>
@@ -182,7 +182,7 @@ export const IncidentReportForm = () => {
                 className={`flex-1 py-1.5 text-xs font-bold rounded-md border shadow-sm transition-colors ${
                   severity === sev
                     ? "bg-brand-600 text-white border-brand-600"
-                    : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                    : "bg-navy-900 text-slate-500 border-navy-800 hover:bg-navy-800"
                 }`}
               >
                 {sev.toUpperCase()}
@@ -197,20 +197,20 @@ export const IncidentReportForm = () => {
             UPLOAD FIELD EVIDENCE (JPEG)
           </label>
           {!evidenceImage ? (
-            <div className="relative flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-300 rounded-md bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer">
+            <div className="relative flex flex-col items-center justify-center p-6 border-2 border-dashed border-navy-700 rounded-md bg-navy-900 hover:bg-navy-700 transition-colors cursor-pointer">
               <input
                 type="file"
                 accept="image/jpeg, .jpg"
                 onChange={handleImageUpload}
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
               />
-              <Upload className="w-6 h-6 text-slate-400 mb-2" />
+              <Upload className="w-6 h-6 text-slate-500 mb-2" />
               <span className="text-xs text-slate-500 font-medium">
                 Drag & drop or browse .jpg
               </span>
             </div>
           ) : (
-            <div className="flex flex-col gap-2 p-2 border border-slate-200 bg-white rounded-md shadow-sm">
+            <div className="flex flex-col gap-2 p-2 border border-navy-800 bg-navy-900 rounded-md shadow-sm">
               <div className="relative">
                 <img
                   src={evidenceImage}
@@ -220,13 +220,13 @@ export const IncidentReportForm = () => {
                 <button
                   type="button"
                   onClick={() => setEvidenceImage(null)}
-                  className="absolute top-2 right-2 p-1.5 bg-white text-rose-600 border border-slate-200 rounded-md shadow hover:bg-rose-50 transition-colors"
+                  className="absolute top-2 right-2 p-1.5 bg-navy-900 text-rose-400 border border-navy-800 rounded-md shadow hover:bg-rose-500/10 transition-colors"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
               <div className="flex justify-between items-center px-1">
-                <span className="text-[10px] font-mono text-slate-700 truncate">
+                <span className="text-[10px] font-mono text-slate-300 truncate">
                   {evidenceFile.name}
                 </span>
                 <span className="text-[10px] font-mono text-slate-500">
@@ -236,7 +236,7 @@ export const IncidentReportForm = () => {
             </div>
           )}
           {evidenceError && (
-            <div className="text-[10px] font-bold mt-1 p-2 border rounded bg-rose-50 border-rose-200 text-rose-700">
+            <div className="text-[10px] font-bold mt-1 p-2 border rounded bg-rose-500/10 border-rose-500/30 text-rose-300">
               {evidenceError}
             </div>
           )}
@@ -250,7 +250,7 @@ export const IncidentReportForm = () => {
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            className="bg-white border border-slate-200 rounded-md p-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 min-h-[80px] shadow-sm"
+            className="bg-navy-900 border border-navy-800 rounded-md p-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 min-h-[80px] shadow-sm"
             placeholder="Describe slick appearance, odor, or local observations..."
           />
         </div>
@@ -264,7 +264,7 @@ export const IncidentReportForm = () => {
       </form>
 
       {toast && (
-        <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold text-center rounded-md shadow-sm">
+        <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-bold text-center rounded-md shadow-sm">
           {toast}
         </div>
       )}

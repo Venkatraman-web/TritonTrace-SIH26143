@@ -110,18 +110,21 @@ export const AuthModal = ({ isOpen = true, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
-      {/* Backdrop overlay */}
-      <div 
-        className="absolute inset-0 bg-slate-900/40 cursor-pointer" 
-        onClick={onClose} 
+      {/* Backdrop overlay — soft oceanic gradient instead of flat slate */}
+      <div
+        className="absolute inset-0 bg-gradient-to-br from-navy-950/70 via-navy-900/50 to-brand-900/40 backdrop-blur-sm cursor-pointer"
+        onClick={onClose}
       />
 
-      {/* Clean White Modal Box */}
-      <div className="relative w-full max-w-xl overflow-hidden rounded-md border border-slate-200 bg-white p-6 sm:p-8 shadow-xl transition-all text-slate-900">
+      {/* Soothing gradient Modal Box */}
+      <div className="relative w-full max-w-xl overflow-hidden rounded-2xl border border-brand-100 bg-gradient-to-br from-white via-white to-brand-50/60 p-7 sm:p-9 shadow-2xl shadow-navy-900/20 transition-all text-slate-900">
+        {/* Decorative soft glow, purely cosmetic */}
+        <div className="pointer-events-none absolute -top-20 -right-20 w-64 h-64 rounded-full bg-brand-200/30 blur-3xl" />
+
         {/* Top telemetry strip */}
-        <div className="mb-6 flex items-center justify-between border-b border-slate-100 pb-4">
+        <div className="relative mb-6 flex items-center justify-between border-b border-brand-100 pb-4">
           <div className="flex items-center space-x-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-md border border-brand-200 bg-brand-50 text-brand-600">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-brand-300 bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-sm shadow-brand-500/30">
               <Satellite className="h-5 w-5 animate-pulse" />
             </div>
             <div>
@@ -151,7 +154,7 @@ export const AuthModal = ({ isOpen = true, onClose }) => {
         </div>
 
         {error && (
-          <div className="mb-5 flex items-center space-x-2 rounded-md border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs text-rose-700">
+          <div className="mb-5 flex items-center space-x-2 rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs text-rose-700">
             <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />
             <span>{error}</span>
           </div>
@@ -184,9 +187,9 @@ export const AuthModal = ({ isOpen = true, onClose }) => {
                     key={r.id}
                     type="button"
                     onClick={() => handleRoleSelect(r.id)}
-                    className={`flex items-start space-x-4 rounded-md border p-3.5 text-left transition-all duration-150 cursor-pointer ${borderStyle}`}
+                    className={`flex items-start space-x-4 rounded-lg border p-3.5 text-left transition-all duration-150 cursor-pointer ${borderStyle}`}
                   >
-                    <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md border ${
+                    <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border ${
                       isSelected
                         ? r.accentColor === 'cyan'
                           ? 'border-brand-200 bg-brand-50 text-brand-600'
@@ -201,19 +204,23 @@ export const AuthModal = ({ isOpen = true, onClose }) => {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-semibold text-slate-900">{r.title}</span>
-                        <span className={`font-mono text-[10px] uppercase px-2 py-0.5 rounded border ${
-                          isSelected
-                            ? r.accentColor === 'cyan'
-                              ? 'bg-brand-50 text-brand-700 border-brand-200 font-semibold'
-                              : r.accentColor === 'emerald'
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 font-semibold'
-                              : 'bg-violet-50 text-violet-700 border-violet-200 font-semibold'
-                            : 'bg-slate-100 text-slate-600 border-slate-200'
-                        }`}>
-                          {r.badge}
-                        </span>
+                        {r.badge && !r.hideBadgeInPicker && (
+                          <span className={`font-mono text-[10px] uppercase px-2 py-0.5 rounded border ${
+                            isSelected
+                              ? r.accentColor === 'cyan'
+                                ? 'bg-brand-50 text-brand-700 border-brand-200 font-semibold'
+                                : r.accentColor === 'emerald'
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200 font-semibold'
+                                : 'bg-violet-50 text-violet-700 border-violet-200 font-semibold'
+                              : 'bg-slate-100 text-slate-600 border-slate-200'
+                          }`}>
+                            {r.badge}
+                          </span>
+                        )}
                       </div>
-                      <div className="text-xs text-slate-500 font-medium">{r.subtitle}</div>
+                      {r.subtitle && (
+                        <div className="text-xs text-slate-500 font-medium">{r.subtitle}</div>
+                      )}
                       <p className="mt-1 text-[11px] leading-relaxed text-slate-600">{r.description}</p>
                     </div>
 
@@ -239,7 +246,7 @@ export const AuthModal = ({ isOpen = true, onClose }) => {
               <button
                 type="button"
                 onClick={handleNextStep}
-                className="flex items-center space-x-2 rounded-md bg-brand-600 px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-brand-500 active:bg-brand-700 cursor-pointer shadow-sm"
+                className="flex items-center space-x-2 rounded-lg bg-brand-600 px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-brand-500 active:bg-brand-700 cursor-pointer shadow-sm"
               >
                 <span>Proceed to Credentials</span>
                 <ArrowRight className="h-4 w-4" />
@@ -294,7 +301,7 @@ export const AuthModal = ({ isOpen = true, onClose }) => {
                     value={credentials.email}
                     onChange={(e) => setCredentials({ ...credentials, email: e.target.value })}
                     required
-                    className="w-full rounded-md border border-slate-200 bg-white py-2 pl-9 pr-3 text-xs text-slate-900 placeholder-slate-400 focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600 font-mono"
+                    className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-xs text-slate-900 placeholder-slate-400 focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600 font-mono"
                     placeholder="operator@organization.gov"
                   />
                 </div>
@@ -314,7 +321,7 @@ export const AuthModal = ({ isOpen = true, onClose }) => {
                     value={credentials.password}
                     onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
                     required
-                    className="w-full rounded-md border border-slate-200 bg-white py-2 pl-9 pr-3 text-xs text-slate-900 placeholder-slate-400 focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600 font-mono"
+                    className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-xs text-slate-900 placeholder-slate-400 focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600 font-mono"
                     placeholder="Enter security token"
                   />
                 </div>
@@ -334,7 +341,7 @@ export const AuthModal = ({ isOpen = true, onClose }) => {
                     value={credentials.agency}
                     onChange={(e) => setCredentials({ ...credentials, agency: e.target.value })}
                     required
-                    className="w-full rounded-md border border-slate-200 bg-white py-2 pl-9 pr-3 text-xs text-slate-900 placeholder-slate-400 focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600 font-mono"
+                    className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-xs text-slate-900 placeholder-slate-400 focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600 font-mono"
                     placeholder="e.g. IT-CG-FORENSIC-04 or IMO-918234"
                   />
                 </div>
@@ -345,7 +352,7 @@ export const AuthModal = ({ isOpen = true, onClose }) => {
               <button
                 type="button"
                 onClick={handlePrevStep}
-                className="flex items-center space-x-1.5 rounded-md px-3 py-2 text-xs font-medium text-slate-600 hover:text-slate-900 transition cursor-pointer"
+                className="flex items-center space-x-1.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-600 hover:text-slate-900 transition cursor-pointer"
               >
                 <ArrowLeft className="h-3.5 w-3.5" />
                 <span>Back</span>
@@ -354,7 +361,7 @@ export const AuthModal = ({ isOpen = true, onClose }) => {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex items-center space-x-2 rounded-md bg-brand-600 px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-brand-500 active:bg-brand-700 disabled:opacity-60 cursor-pointer shadow-sm"
+                className="flex items-center space-x-2 rounded-lg bg-brand-600 px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-brand-500 active:bg-brand-700 disabled:opacity-60 cursor-pointer shadow-sm"
               >
                 <KeyRound className="h-4 w-4" />
                 <span>{isSubmitting ? 'Authenticating...' : 'Authenticate & Enter Portal'}</span>

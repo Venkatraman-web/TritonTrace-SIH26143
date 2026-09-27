@@ -10,8 +10,8 @@ import { PI_CLUBS, findVesselsByPiClub } from "../../data/piClubData";
 import { computeVesselLiability, formatUsdCompact } from "../../lib/itopfLiability";
 
 const MODES = [
-  { id: "alibi", label: "Alibi Generator", icon: ShieldCheck, color: "text-blue-600" },
-  { id: "pni", label: "P&I Risk Assessor", icon: AlertTriangle, color: "text-rose-600" },
+  { id: "alibi", label: "Alibi Generator", icon: ShieldCheck, color: "text-blue-400" },
+  { id: "pni", label: "P&I Risk Assessor", icon: AlertTriangle, color: "text-rose-400" },
 ];
 
 export function EnterpriseDashboard({
@@ -37,6 +37,19 @@ export function EnterpriseDashboard({
     onHighlightVessel(null);
     onHighlightGeofence(null);
     setSelectedLiabilityMmsi(null);
+  };
+
+  // Each mode drives its own map overlay (Alibi's vessel highlight vs. P&I's
+  // flagged-vessel highlight/geofence callout) — switching modes without
+  // clearing the other's state would leave its overlay/selection stuck
+  // showing after switching away from it, in either direction.
+  const handleModeChange = (nextMode) => {
+    setMode(nextMode);
+    setActiveAnalysisMode("none");
+    setSelectedPiClub("");
+    setSelectedLiabilityMmsi(null);
+    onHighlightVessel(null);
+    onHighlightGeofence(null);
   };
 
   const handleSelectPiClub = (club) => {
@@ -74,32 +87,32 @@ export function EnterpriseDashboard({
   };
 
   return (
-    <aside className="w-full h-full bg-white flex flex-col shrink-0 border-r border-slate-200 text-slate-900">
-      <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3">
-        <span className="text-xs font-bold tracking-wider text-slate-900 uppercase">
+    <aside className="w-full h-full bg-navy-900 flex flex-col shrink-0 border-r border-navy-800 text-white">
+      <div className="flex items-center justify-between border-b border-navy-800 bg-navy-900 px-4 py-3">
+        <span className="text-xs font-bold tracking-wider text-white uppercase">
           Commercial Operations
         </span>
         <button
           onClick={onCollapse}
-          className="shrink-0 p-1.5 text-slate-400 hover:text-slate-800 hover:bg-slate-200 rounded transition-colors"
+          className="shrink-0 p-1.5 text-slate-500 hover:text-slate-200 hover:bg-navy-700 rounded transition-colors"
           title="Collapse Panel"
         >
           <PanelLeftClose className="w-4 h-4" />
         </button>
       </div>
 
-      <div className="flex items-center gap-2 p-3 border-b border-slate-200 bg-slate-50 shrink-0">
+      <div className="flex items-center gap-2 p-3 border-b border-navy-800 bg-navy-900 shrink-0">
         {MODES.map((m) => {
           const Icon = m.icon;
           const isActive = mode === m.id;
           return (
             <button
               key={m.id}
-              onClick={() => setMode(m.id)}
+              onClick={() => handleModeChange(m.id)}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-[11px] font-bold tracking-wide transition-colors ${
                 isActive
-                  ? `bg-white shadow-sm border border-slate-200 ${m.color}`
-                  : "text-slate-400 hover:text-slate-600"
+                  ? `bg-navy-900 shadow-sm border border-navy-800 ${m.color}`
+                  : "text-slate-500 hover:text-slate-500"
               }`}
             >
               <Icon className="h-3.5 w-3.5" />
@@ -114,7 +127,7 @@ export function EnterpriseDashboard({
 
         {mode === "pni" && (
           <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2 text-rose-600 font-bold text-xs">
+            <div className="flex items-center gap-2 text-rose-400 font-bold text-xs">
               <AlertTriangle className="h-4 w-4" />
               <span>P&amp;I RISK ASSESSOR</span>
             </div>
@@ -126,7 +139,7 @@ export function EnterpriseDashboard({
               <select
                 value={selectedPiClub}
                 onChange={(e) => handleSelectPiClub(e.target.value)}
-                className="px-2.5 py-2 text-xs font-mono border border-slate-200 rounded-md bg-white text-slate-800"
+                className="px-2.5 py-2 text-xs font-mono border border-navy-800 rounded-md bg-navy-900 text-slate-200"
               >
                 <option value="">Choose a club…</option>
                 {PI_CLUBS.map((club) => (
@@ -151,12 +164,12 @@ export function EnterpriseDashboard({
                         onClick={() => handleSelectSpillForPi(inc)}
                         className={`flex flex-col items-start p-2.5 rounded-md border text-left transition-all ${
                           isActive
-                            ? "border-rose-500 bg-rose-50 shadow-inner"
-                            : "border-slate-200 bg-white hover:bg-slate-50"
+                            ? "border-rose-500 bg-rose-500/10 shadow-inner"
+                            : "border-navy-800 bg-navy-900 hover:bg-navy-700"
                         }`}
                       >
                         <span
-                          className={`font-mono text-xs font-bold ${isActive ? "text-rose-700" : "text-slate-800"}`}
+                          className={`font-mono text-xs font-bold ${isActive ? "text-rose-300" : "text-slate-200"}`}
                         >
                           {inc.incident_id}
                         </span>
@@ -174,7 +187,7 @@ export function EnterpriseDashboard({
               activeIncident &&
               (flaggedVessels.length > 0 ? (
                 <div className="flex flex-col gap-2">
-                  <div className="text-[10px] text-rose-700 bg-rose-50 border border-rose-200 rounded px-2 py-1.5 font-semibold">
+                  <div className="text-[10px] text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded px-2 py-1.5 font-semibold">
                     {flaggedVessels.length} {selectedPiClub}-insured vessel
                     {flaggedVessels.length > 1 ? "s" : ""} flagged as a probable
                     source for {activeIncident}.
@@ -186,16 +199,16 @@ export function EnterpriseDashboard({
                       onClick={() => handleSelectVesselForLiability(v)}
                       className={`flex flex-col gap-2 p-3 rounded-md border text-left transition-colors ${
                         selectedLiabilityMmsi === v.mmsi
-                          ? "border-rose-400 bg-rose-50 shadow-inner"
-                          : "border-slate-200 bg-slate-50 hover:bg-slate-100"
+                          ? "border-rose-400 bg-rose-500/10 shadow-inner"
+                          : "border-navy-800 bg-navy-900 hover:bg-navy-700"
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-mono text-xs font-bold text-slate-800">
+                        <span className="font-mono text-xs font-bold text-slate-200">
                           {v.vesselName}
                         </span>
                         {selectedLiabilityMmsi === v.mmsi ? (
-                          <span className="flex items-center gap-1 text-[10px] text-violet-700">
+                          <span className="flex items-center gap-1 text-[10px] text-violet-300">
                             <MapPin className="w-3 h-3" /> Shown on map
                           </span>
                         ) : (
@@ -219,16 +232,16 @@ export function EnterpriseDashboard({
                       </div>
 
                       {v.liability && (
-                        <div className="flex flex-col gap-1.5 mt-1 pt-2 border-t border-slate-200">
+                        <div className="flex flex-col gap-1.5 mt-1 pt-2 border-t border-navy-800">
                           <div className="flex items-center justify-between">
-                            <span className="text-[9px] font-bold text-slate-400 tracking-wider uppercase">
+                            <span className="text-[9px] font-bold text-slate-500 tracking-wider uppercase">
                               Estimated liability
                             </span>
                             <span className="text-[9px] font-bold text-slate-500">
                               {v.liability.itopfTier.tier} · {v.liability.itopfTier.label}
                             </span>
                           </div>
-                          <div className="text-xl font-bold text-rose-700">
+                          <div className="text-xl font-bold text-rose-300">
                             {formatUsdCompact(v.liability.totalLiabilityUsd)}
                           </div>
                           <div className="text-[10px] text-slate-500">
@@ -241,7 +254,7 @@ export function EnterpriseDashboard({
                   ))}
                 </div>
               ) : (
-                <div className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-2 py-1.5">
+                <div className="text-[10px] text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 rounded px-2 py-1.5">
                   No {selectedPiClub} vessels appear in this incident's
                   top-15 probable sources.
                 </div>

@@ -4,6 +4,9 @@ import { useAuth } from "./context/AuthContext";
 import { RoleGuard } from "./components/auth/RoleGuard";
 import Layout from "./layout";
 import { LandingPage } from "./components/landing/LandingPage";
+import { MethodsPage } from "./components/landing/MethodsPage";
+import { FaqSection } from "./components/landing/FaqSection";
+import { ImpactSection } from "./components/landing/ImpactSection";
 import { TopHUD } from "./components/layout/TopHUD";
 import { MapCanvas } from "./components/map/MapCanvas";
 import { mockIncident } from "./utils/mockData";
@@ -25,13 +28,13 @@ function PortalWorkspace({ portalType }) {
   // Role-specific config mapped to the new flat UI colors
   const configs = {
     normal: {
-      title: "Normal User Console",
-      subtitle: "Field Observer & Local Response",
+      title: "Researcher Console",
+      subtitle: "Marine Research & Local Response",
       colorClass: "text-emerald-600 bg-emerald-50 border-emerald-200",
       icon: Eye,
     },
     admin: {
-      title: "Lead Investigator Command Console",
+      title: "Authorities Command Console",
       subtitle: "Maritime Police / Coast Guard / Port State Control",
       colorClass: "text-brand-600 bg-brand-50 border-brand-200",
       icon: ShieldAlert,
@@ -171,6 +174,9 @@ export default function App() {
       {/* Public Pages wrapped in Layout (Navbar + Footer) */}
       <Route element={<Layout />}>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/methods" element={<MethodsPage />} />
+        <Route path="/faqs" element={<FaqSection />} />
+        <Route path="/impact" element={<ImpactSection />} />
       </Route>
 
       {/* Distinct Portal Route: Normal User */}

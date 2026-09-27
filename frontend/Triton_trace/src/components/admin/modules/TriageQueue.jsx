@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useIncident } from "../../../context/IncidentContext";
 import { seedIncidents } from "../../../data/seedIncidents";
+import { densityGridByIncident } from "../../../data/densityGrid";
+import { topVesselsByIncident } from "../../../data/aisTopVessels";
 import { formatUTCDateTime } from "../../../lib/dateFormat";
 import { DossierModal } from "./DossierModal";
 import {
@@ -52,6 +54,32 @@ export const TriageQueue = () => {
     );
   }, []);
 
+  // Zooms/pans the map to fit the density cluster plus where the top-15
+  // vessels were actually encountered near it — not their entire AIS
+  // history, which can stretch far across the map and zoom out much more
+  // than the attribution picture actually needs.
+  const handleToggleAttribution = (report) => {
+    const next = activeAnalysisMode === "attribution" ? "none" : "attribution";
+    setActiveAnalysisMode(next);
+    if (next !== "attribution") return;
+
+    const coords = (densityGridByIncident[report.id]?.features || []).map(
+      (f) => f.geometry.coordinates,
+    );
+    (topVesselsByIncident[report.id] || []).forEach((tv) => {
+      if (tv.matchedCandidateLon != null && tv.matchedCandidateLat != null) {
+        coords.push([tv.matchedCandidateLon, tv.matchedCandidateLat]);
+      }
+      if (tv.bestEncounterLon != null && tv.bestEncounterLat != null) {
+        coords.push([tv.bestEncounterLon, tv.bestEncounterLat]);
+      }
+    });
+
+    if (coords.length >= 2) {
+      setPanToCoordinate({ trajectory: coords });
+    }
+  };
+
   const handleCardClick = (report) => {
     if (activeIncident === report.id) {
       setActiveIncident(null);
@@ -81,20 +109,20 @@ export const TriageQueue = () => {
           return (
             <div
               key={report.id}
-              className={`flex flex-col bg-white transition-all overflow-hidden ${
+              className={`flex flex-col bg-navy-900 transition-all overflow-hidden ${
                 isExpanded
-                  ? "border border-brand-400 shadow-md rounded-lg"
-                  : "border border-slate-200 rounded-md hover:border-slate-300"
+                  ? "border border-brand-500/50 shadow-md rounded-lg"
+                  : "border border-navy-800 rounded-md hover:border-navy-700"
               }`}
             >
               {/* Clickable Header */}
               <div
-                className={`flex justify-between items-start p-3 cursor-pointer ${isExpanded ? "bg-brand-50/50" : "bg-white"}`}
+                className={`flex justify-between items-start p-3 cursor-pointer ${isExpanded ? "bg-brand-500/10" : "bg-navy-900"}`}
                 onClick={() => handleCardClick(report)}
               >
                 <div className="flex flex-col">
                   <span
-                    className={`${isExpanded ? "text-brand-700" : "text-slate-900"} font-mono font-bold text-xs`}
+                    className={`${isExpanded ? "text-brand-300" : "text-white"} font-mono font-bold text-xs`}
                   >
                     {report.id}
                   </span>
@@ -102,31 +130,25 @@ export const TriageQueue = () => {
                     {formatUTCDateTime(report.createdAt)}
                   </span>
                 </div>
-                <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded text-[9px] font-bold">
+                <span className="px-2 py-0.5 bg-amber-500/10 text-amber-300 border border-amber-500/30 rounded text-[9px] font-bold">
                   {report.status}
                 </span>
               </div>
 
               {/* The "Accordion" Expanded Area */}
               {isExpanded && (
-                <div className="flex flex-col px-3 pb-3 border-t border-slate-100 mt-1 pt-3 animate-in fade-in duration-200">
+                <div className="flex flex-col px-3 pb-3 border-t border-navy-800 mt-1 pt-3 animate-in fade-in duration-200">
                   {/* Mission Command Buttons */}
-                  <span className="text-[9px] font-bold text-slate-400 tracking-wider mb-2">
+                  <span className="text-[9px] font-bold text-slate-500 tracking-wider mb-2">
                     INTELLIGENCE SUITE
                   </span>
                   <div className="grid grid-cols-2 gap-2 mb-4">
                     <button
-                      onClick={() =>
-                        setActiveAnalysisMode(
-                          activeAnalysisMode === "attribution"
-                            ? "none"
-                            : "attribution",
-                        )
-                      }
+                      onClick={() => handleToggleAttribution(report)}
                       className={`flex flex-col items-center justify-center p-2 rounded-md border transition-all ${
                         activeAnalysisMode === "attribution"
-                          ? "border-brand-500 bg-brand-50 text-brand-700 shadow-inner"
-                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                          ? "border-brand-500/50 bg-brand-500/10 text-brand-300 shadow-inner"
+                          : "border-navy-800 bg-navy-950 text-slate-300 hover:bg-navy-800"
                       }`}
                     >
                       <Target className="w-4 h-4 mb-1" />
@@ -145,8 +167,8 @@ export const TriageQueue = () => {
                       }
                       className={`flex flex-col items-center justify-center p-2 rounded-md border transition-all ${
                         activeAnalysisMode === "forward_track"
-                          ? "border-amber-500 bg-amber-50 text-amber-700 shadow-inner"
-                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                          ? "border-amber-500/50 bg-amber-500/10 text-amber-300 shadow-inner"
+                          : "border-navy-800 bg-navy-950 text-slate-300 hover:bg-navy-800"
                       }`}
                     >
                       <FastForward className="w-4 h-4 mb-1" />
@@ -162,7 +184,7 @@ export const TriageQueue = () => {
                   <div className="flex gap-2 mb-4">
                     <button
                       onClick={() => setIsDossierOpen(true)}
-                      className="flex-1 flex items-center justify-center gap-2 py-2 rounded-md bg-slate-800 hover:bg-slate-900 border border-slate-900 text-white text-[10px] font-bold tracking-wider transition-colors shadow-sm"
+                      className="flex-1 flex items-center justify-center gap-2 py-2 rounded-md bg-brand-600 hover:bg-brand-500 border border-brand-500/50 text-white text-[10px] font-bold tracking-wider transition-colors shadow-sm"
                     >
                       <FileText className="w-3.5 h-3.5" /> REVIEW DOSSIER
                     </button>
@@ -172,22 +194,22 @@ export const TriageQueue = () => {
 
                   {/* Render Hindcast & AIS Matrix if Attribution is active */}
                   {activeAnalysisMode === "attribution" && (
-                    <div className="flex flex-col gap-4 p-3 bg-slate-50 border border-slate-200 rounded-md mb-4 shadow-inner">
-                      <div className="flex items-center gap-2 px-3 py-2 bg-brand-100 border border-brand-200 rounded-md">
-                        <ShieldCheck className="w-4 h-4 text-brand-700" />
-                        <span className="text-[10px] font-bold text-brand-800 tracking-wider">
+                    <div className="flex flex-col gap-4 p-3 bg-navy-950 border border-navy-800 rounded-md mb-4 shadow-inner">
+                      <div className="flex items-center gap-2 px-3 py-2 bg-brand-500/15 border border-brand-500/30 rounded-md">
+                        <ShieldCheck className="w-4 h-4 text-brand-400" />
+                        <span className="text-[10px] font-bold text-brand-300 tracking-wider">
                           ATTRIBUTION SUITE ACTIVE
                         </span>
                       </div>
                       <SourceAttributionPanel incidentId={report.id} />
 
-                      <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100 rounded-md">
+                      <div className="grid grid-cols-2 gap-1 p-1 bg-navy-900 rounded-md">
                         <button
                           onClick={() => setAttributionView("ais")}
                           className={`py-1.5 rounded text-[10px] font-bold tracking-wide transition-colors ${
                             attributionView === "ais"
-                              ? "bg-white text-brand-700 shadow-sm"
-                              : "text-slate-500 hover:text-slate-700"
+                              ? "bg-navy-700 text-brand-300 shadow-sm"
+                              : "text-slate-500 hover:text-slate-300"
                           }`}
                         >
                           AIS Attribution
@@ -196,15 +218,15 @@ export const TriageQueue = () => {
                           onClick={() => setAttributionView("origin_matrix")}
                           className={`py-1.5 rounded text-[10px] font-bold tracking-wide transition-colors ${
                             attributionView === "origin_matrix"
-                              ? "bg-white text-brand-700 shadow-sm"
-                              : "text-slate-500 hover:text-slate-700"
+                              ? "bg-navy-700 text-brand-300 shadow-sm"
+                              : "text-slate-500 hover:text-slate-300"
                           }`}
                         >
                           Cluster Origin
                         </button>
                       </div>
 
-                      <div className="w-full h-px bg-slate-200"></div>
+                      <div className="w-full h-px bg-navy-800"></div>
                       {attributionView === "origin_matrix" ? (
                         <ClusterOriginMatrix incidentId={report.id} />
                       ) : (
@@ -215,7 +237,7 @@ export const TriageQueue = () => {
 
                   {/* Render Forward Track panel if active */}
                   {activeAnalysisMode === "forward_track" && (
-                    <div className="flex flex-col p-3 bg-slate-50 border border-slate-200 rounded-md shadow-inner">
+                    <div className="flex flex-col p-3 bg-navy-950 border border-navy-800 rounded-md shadow-inner">
                       <ForwardTrackPanel />
                     </div>
                   )}

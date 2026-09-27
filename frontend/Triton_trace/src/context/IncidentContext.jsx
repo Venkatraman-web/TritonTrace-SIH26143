@@ -303,6 +303,30 @@ export const IncidentProvider = ({ children }) => {
     setIsPolygonClosed(false);
   }, []);
 
+  // Clears every piece of session/analysis state that's specific to
+  // whichever incident/tool a user had open — called on logout so a fresh
+  // login into a different portal doesn't inherit e.g. a forward-track
+  // animation or attribution focus left running from the previous session.
+  // Raw AIS pool data (commercialFleet/allVesselTracks) is deliberately left
+  // alone since it's just a cache, not session state.
+  const resetIncidentSession = useCallback(() => {
+    setActiveIncident(null);
+    setPanToCoordinate(null);
+    setInteractionMode("none");
+    setPickedCoordinate(null);
+    setDrawnPolygon([]);
+    setCursorCoordinate(null);
+    setIsPolygonClosed(false);
+    setCorrelationMarker(null);
+    setActiveAnalysisMode("none");
+    setFocusedVesselMmsi(null);
+    setFocusedCandidateId(null);
+    setAttributionView("ais");
+    setForwardTrackStep(0);
+    setIsForwardTrackPlaying(false);
+    setForwardTrajectory({ timestamps: [], particlesByStep: [] });
+  }, []);
+
   const value = {
     activeIncident,
     setActiveIncident,
@@ -315,6 +339,7 @@ export const IncidentProvider = ({ children }) => {
     setDrawnPolygon,
     addPolygonVertex,
     clearPolygon,
+    resetIncidentSession,
     cursorCoordinate,
     setCursorCoordinate,
     isPolygonClosed,

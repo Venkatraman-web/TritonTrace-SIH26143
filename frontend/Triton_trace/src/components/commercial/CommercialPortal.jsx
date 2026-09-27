@@ -24,7 +24,7 @@ const STATIC_LAYERS = [
 
 export function CommercialPortal() {
   const { logout } = useAuth();
-  const { commercialFleet } = useIncident();
+  const { commercialFleet, resetIncidentSession } = useIncident();
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [engine, setEngine] = useState("leaflet");
@@ -39,6 +39,7 @@ export function CommercialPortal() {
   }, [isSidebarOpen]);
 
   const handleLogout = () => {
+    resetIncidentSession();
     logout();
     navigate("/");
   };
@@ -49,7 +50,7 @@ export function CommercialPortal() {
   const selectedVesselId = highlightedVessel?.id ?? null;
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-slate-50 text-slate-900 overflow-hidden font-sans select-none">
+    <div className="flex flex-col h-screen w-screen bg-navy-900 text-white overflow-hidden font-sans select-none">
       <TopHUD
         activeIncidentId={mockIncident.incident_id}
         demoMode={false}
@@ -63,7 +64,7 @@ export function CommercialPortal() {
             isSidebarOpen ? "w-80 lg:w-96" : "w-0"
           }`}
         >
-          <div className="w-80 lg:w-96 h-full overflow-hidden bg-white shadow-xl flex flex-col relative">
+          <div className="w-80 lg:w-96 h-full overflow-hidden bg-navy-900 shadow-xl flex flex-col relative">
             <EnterpriseDashboard
               onHighlightVessel={setHighlightedVessel}
               onHighlightGeofence={setHighlightedGeofenceName}
@@ -75,14 +76,14 @@ export function CommercialPortal() {
         {!isSidebarOpen && (
           <button
             onClick={() => setIsSidebarOpen(true)}
-            className="absolute top-4 left-4 z-30 p-2.5 bg-white border border-slate-200 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-600 text-slate-600 rounded-md shadow-md transition-all"
+            className="absolute top-4 left-4 z-30 p-2.5 bg-navy-900 border border-navy-800 hover:border-brand-500/40 hover:bg-brand-500/10 hover:text-brand-400 text-slate-500 rounded-md shadow-md transition-all"
             title="Expand Panel"
           >
             <PanelLeftOpen className="w-5 h-5" />
           </button>
         )}
 
-        <div className="flex-1 relative h-full w-full bg-slate-100 isolate">
+        <div className="flex-1 relative h-full w-full bg-navy-800 isolate">
           <MapCanvas
             interactive={true}
             onEngineResolved={(eng) => setEngine(eng)}
@@ -110,7 +111,7 @@ export function CommercialPortal() {
             <button
               type="button"
               onClick={handleLogout}
-              className="flex items-center space-x-1 rounded border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600 hover:bg-slate-50 hover:text-rose-600 transition shadow-md"
+              className="flex items-center space-x-1 rounded border border-navy-800 bg-navy-900 px-3 py-2 text-xs text-slate-500 hover:bg-navy-700 hover:text-rose-400 transition shadow-md"
             >
               <LogOut className="h-4 w-4" />
               <span className="font-semibold">Switch Role</span>

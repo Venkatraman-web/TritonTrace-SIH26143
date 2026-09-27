@@ -443,4 +443,332 @@ What was removed:
 
 **Note:** this repo currently has substantial concurrent work landing on disk from what appears to be another active session (many new untracked files/components — Alibi Generator, ITOPF liability, weathering charts, etc. — and further additions to this same `tasks.md`, none of which I authored). Re-verified after a `git stash`/`stash pop` round-trip that my edits for this task remained intact and unaffected.
 
+---
+
+## Task 19 (started, foundation + 2 named components done) — "Oceanic Tech" visual design overhaul (styling only)
+
+**Request:** complete visual overhaul to a premium/high-tech enterprise look — new "Oceanic Tech" color palette (deep navy darks + luminous cyan/teal accents, softer semantic badge colors), modern typography (Inter or similar), and more depth on cards/modals/buttons (rounded-lg/xl, dispersed shadows, more padding) — explicitly styling-only, no logic/hooks/map-init/routing changes.
+
+**Palette delivered** (see chat for the full table + rationale): extended the existing `brand` token (already cyan, just under-extended) into a full 50-950 ramp (`brand-400 #22D3EE` for luminous highlights/glow, `brand-500 #06B6D4` primary, `brand-600/700` hover/pressed), and added a new `navy` ramp (`navy-700 #1E293B` → `navy-950 #020617`) for dark chrome/hero sections — distinct from Tailwind's cooler default `slate`, which stays for light neutral backgrounds. Confirmed via grep there were no literal harsh-yellow classes anywhere in the codebase already (existing badges already use the soft `bg-amber-50`/`text-amber-700` pattern this request asked for).
+
+What was built (styling-only, verified no logic touched via lint + diff on each file):
+1. `tailwind.config.js`: `brand` extended to a full ramp; new `navy` ramp added; `fontFamily.sans` set to Inter-first.
+2. `index.css`: Google Fonts import for Inter (400-800 weights); base `font-family` updated to lead with Inter.
+3. `WorkflowHero.jsx` (the "Launch TritonTrace" hero, explicitly named): hero background flipped to `bg-navy-950` with a `navy-800` border, heading to bold white + `brand-400` luminous accent, and the button changed from a thin `border-2 border-slate-900` ghost button to a solid `bg-brand-500` button with a cyan glow shadow (`shadow-brand-500/20`) that intensifies on hover — matches the "solid, impactful" ask directly.
+4. `AuthModal.jsx` (the "Forensic Access Control & RBAC" modal, matching the user's "Forensics Access Control"): modal container `rounded-md → rounded-2xl` with a soft dispersed `shadow-2xl shadow-slate-900/10` (was a flat `shadow-xl`) and more padding (`p-6/p-8 → p-7/p-9`); every other `rounded-md` surface in the file (role cards, inputs, buttons, chips) bumped to `rounded-lg` for a consistent radius scale.
+5. Verified in-browser (Playwright, zero console errors both times): landing page hero now reads as a dark "ops center" opener before transitioning into the existing light content sections; both AuthModal steps (role select, credentials) render correctly with the new depth/radius and are still fully functional (role switching, form fields, pre-filled credentials all intact); admin portal spot-checked afterward to confirm the token/font change doesn't regress anything there (it doesn't — same layout, just Inter now, since it already relies on the same `brand-*` tokens which only got deeper, not redefined at their existing 500/600 anchors).
+
+**Scope note for follow-up:** the palette/font foundation (`brand`/`navy` tokens + Inter) already cascades to every component that uses `brand-*` classes — a large share of primary buttons/borders/badges across all three portals, automatically. What's *not* yet individually re-touched for the deeper card/shadow/radius treatment is the rest of the app's cards and panels (admin sidebar cards, commercial dashboard cards, normal portal, TopHUD, etc.) — those still use their original `rounded-md`/flat-shadow conventions. Given the size of that surface (dozens of files) and that another session is actively editing this same repo concurrently, I stopped at the explicitly-named components plus the shared foundation rather than sweeping every file blind in one pass. Happy to keep going file-by-file on request — say which portal/section to do next.
+
+---
+
+## Task 20 — Fix landing hero layout overlap at 125% min zoom + wire navbar "Launch Portal" to the auth modal
+
+**Request:** at the app's fixed 125% minimum browser zoom, the "TritonTrace" heading in the hero overlapped the description paragraph next to it; also, the top navbar's "Launch Portal" button did nothing (just a `console.log`) and needed to open the same login/role-selection flow as the hero's "Launch TritonTrace" button.
+
+**Root cause (overlap):** `WorkflowHero.jsx`'s two-column grid switched to side-by-side at the `lg` breakpoint (1024px), but the effective viewport width at 125% browser zoom is well under that threshold's real budget for an 8xl heading, so the heading column visually spilled into the description column instead of neatly stacking.
+
+**Fix:**
+- `WorkflowHero.jsx`: moved the two-column grid's breakpoint from `lg:` to `xl:` (so it stays stacked, one column per row, until there's genuinely enough width) and slightly reduced the heading's size ramp (`text-8xl` → `text-7xl` at its largest step) so it comfortably fits its column once the two-column layout does kick in. Purely a Tailwind breakpoint/size change, no logic touched.
+- `Navbar.jsx`: the "Launch Portal" button previously had no real behavior (`onClick={() => console.log(...)}`) and Navbar wasn't wired to any modal. Gave `Navbar.jsx` its own `isAuthModalOpen` state and rendered the existing `AuthModal` component from it (same component `LandingPage.jsx` already uses for the hero's "Launch TritonTrace" button), so clicking either button now opens the identical Forensic Access Control / role-selection modal. Chose local state in `Navbar.jsx` over threading a prop through `layout.jsx` since Navbar is shared across all public pages (not just the landing page) and isn't currently passed any props.
+
+**Verified** via Playwright screenshots (dev server, zero console errors): hero heading and description no longer overlap; clicking navbar "Launch Portal" opens the same modal as the hero button, with role selection pre-focused on Lead Investigator exactly as before.
+
+---
+
+## Task 21 — Add a "Why" section + Resources tabs to the landing page
+
+**Request:** taking inspiration from SkyTruth's Cerulean landing page (large "Why" heading, paragraph, and a "Resources" card with Guide/Methods/API/FAQs links), add an equivalent section to the TritonTrace landing page, with a paragraph on why the project was built. Explicitly asked to only scaffold the tabs (no content behind them yet) and to skip the "Latest Insights" section entirely.
+
+**What was built:** a new `#why` section in `LandingPage.jsx`, placed after the existing data-source strip and before the auth modal. Two-column layout (large "Why" heading on the left, paragraph + resources card on the right) matching the reference's structure. The paragraph explains the project's rationale: chronic marine oil discharges are hard to trace after the fact, and TritonTrace exists to fuse SAR detections, backward drift physics, and AIS history into an evidentiary starting point for investigators/authorities. Below it, a "TritonTrace Resources" card renders four buttons — Guide, Methods, API, FAQs — styled consistently with the rest of the site (no routes/content wired up yet, per the request to hold off). No "Latest Insights" section was added.
+
+**Verified** via Playwright screenshot (dev server, zero console errors): section renders with correct heading/paragraph/button layout and matches the site's existing visual language.
+
+---
+
+## Task 22 — Oceanic gradient headings + tighten photo→Why transition + more artistic Why section
+
+**Request:** taking inspiration from SkyTruth's "Cerulean" wordmark (a navy-to-cyan gradient on the heading text), apply that gradient treatment to the "TritonTrace" hero heading and the "Why" heading; remove all the leftover text sitting between the ship photo and the "Why" section so the photo flows straight into it; and make the "Why" section itself more picturesque/artistic and soothing.
+
+**What changed:**
+- `WorkflowHero.jsx`: the "TritonTrace" heading is now one gradient span (`bg-gradient-to-br from-white via-brand-200 to-brand-400 bg-clip-text text-transparent`) instead of a plain white/cyan two-tone split, echoing the reference's diagonal gradient wordmark.
+- `LandingPage.jsx`: removed the old "3-Stage Connected Workflow" badge/paragraph section and the "Data Source Strip" section entirely — both sat between the photo and the Why section and are gone now, so the photo transitions directly into Why. The "Why" heading got the same gradient treatment (`from-navy-900 via-brand-600 to-brand-300`), and the section itself was given a soft gradient background (`from-slate-50 via-white to-slate-50`) plus three large, blurred, low-opacity color blobs (decorative only, `pointer-events-none`) for a calmer, more artistic feel; the resources card got a translucent/blurred backdrop to sit gently on top of that backdrop.
+
+**Note:** the removed sections' content (the "END-TO-END MARITIME ATTRIBUTION" tagline and the "INTEGRATED GEOSPATIAL DATA STREAMS" data-source badges) is not preserved elsewhere — the request was explicit about wanting nothing between the photo and Why, so if that content still needs a home, it should be flagged for a follow-up rather than assumed gone for good.
+
+**Verified** via Playwright screenshots (dev server, zero console errors): hero and Why headings both render the gradient correctly; scrolling from the photo lands directly on the Why heading with no interstitial text; Why section reads noticeably softer/more artistic with the blurred gradient backdrop.
+
+---
+
+## Task 23 — Build a "Methods" page (SkyTruth Cerulean-style), wired to real pipeline output images
+
+**Request:** taking inspiration from SkyTruth Cerulean's "Methods" documentation page (a sticky sidebar table of contents + numbered sections walking through the pipeline, each with diagrams, ending in a data-sources table), build an equivalent page for TritonTrace and populate it with real images/content from the project's `data/` folder wherever it fits, then wire up the landing page's inert "Methods" button to it.
+
+**What was built:**
+- New route `/methods` (`src/App.jsx`, nested inside the same `<Layout>` route as `/` so it gets the shared Navbar/Footer) rendering a new `MethodsPage.jsx` component (`src/components/landing/MethodsPage.jsx`).
+- The page mirrors Cerulean's structure: a sticky left sidebar with clickable section links (smooth-scrolls + highlights the active section) and five numbered sections on the right: How TritonTrace Works (overview), SAR Slick Detection & Validation, Backward Drift Hindcast, AIS Vessel Attribution, Forward Trajectory & Hotspot Alerts, and a closing Data Sources table (five real upstream sources: Sentinel-1, CMEMS, NOAA GFS, historical AIS, and the app's own regional geofences) — same shape as Cerulean's own sources table.
+- Real pipeline output images were pulled from `data/ow-0008-20260925T133354Z-1-001/ow-0008/` and `data/ow-0008-forward/ow-0008/` (chosen as the representative incident) and copied into `frontend/Triton_trace/public/methods/`: `validation_map_alignment.png` → SAR validation section, `04_hotspot_heatmap.png` → hindcast density section, `AIS_top15_tracks.png` + `possible_source_origins_ais_attribution.png` → AIS attribution section, and `ow-0008-forward/final.png` → forward trajectory section. Each image has a one-line caption explaining what it shows.
+- `LandingPage.jsx`: the "Methods" button in the resources card is now a real `<Link to="/methods">` (react-router); the other three (Guide/API/FAQs) are untouched inert placeholders, since only Methods was asked for.
+
+**Verified** via Playwright (dev server, zero new console errors): clicking "Methods" on the landing page navigates to `/methods`; all five images render correctly at each scrolled section; the data-sources table renders cleanly.
+
+---
+
+## Task 24 — Replace real incident screenshots on the Methods page with generic illustrations; trim the Why section's resource links
+
+**Request:** the images copied onto the Methods page from Task 23 weren't rendering for the user, and — more importantly — they were real screenshots from an actual incident carrying sensitive specifics (real vessel names like "MINERVA EAGLE"/"SEASPAN GLORY", a real port name, real coordinates, and an "evidence ranking only — not a confirmed responsible vessel" disclaimer baked into the image itself). Asked to use AI-generated images instead and to remove the sensitive ones; also asked to drop the "Guide" and "API" buttons from the Why section's resources card.
+
+**What was done:**
+- Since there's no image-generation tool available in this environment, replaced all five real incident screenshots with hand-built, fully generic inline SVG diagrams (`SarDetectionDiagram`, `HindcastDiagram`, `AttributionDiagram`, `ForwardTrackDiagram` in `MethodsPage.jsx`) — schematic illustrations of each pipeline concept (a slick polygon over a scene, a particle ensemble fanning backward to a density zone, ranked AIS tracks converging on a candidate origin, forward particles crossing a critical/watch zone). None reference any real vessel, port, coordinate, or incident — they're deliberately abstract, labeled only with generic terms (e.g. "DETECTED POLYGON vs. RAW SCENE", "CANDIDATE ORIGIN"). Each figure's caption was reworded to say "Illustrative diagram" to be explicit that these are conceptual, not real detections.
+- Deleted the copied real images and the now-unused `frontend/Triton_trace/public/methods/` folder entirely.
+- `LandingPage.jsx`: the Why section's resources card now only shows "Methods" (a working link) and "FAQs" (still an inert placeholder) — "Guide" and "API" were removed.
+- Fixed a label-clipping bug found while re-verifying the new hindcast diagram (the "H" in "HIGH-DENSITY ORIGIN ZONE" was cut off at the SVG's left edge) by recentering that text and its accompanying circle.
+
+**Verified** via Playwright screenshots (dev server, zero console errors): all four diagrams render correctly with no clipped text; Why section now shows exactly two resource buttons (Methods, FAQs).
+
+---
+
+## Task 25 — Revert Task 24's image swap: restore the original real pipeline screenshots on the Methods page
+
+**Request:** the generic SVG diagrams from Task 24 were a downgrade — explicitly asked to put the original real images back exactly as they were, re-uploading them from the `data/` folder, and to change nothing else (i.e. keep the Guide/API removal and everything else from Task 24 as-is).
+
+**What was done:** re-copied the same five source files from `data/ow-0008-20260925T133354Z-1-001/ow-0008/` and `data/ow-0008-forward/ow-0008/` back into `frontend/Triton_trace/public/methods/` under their original names (`sar-validation.png`, `hindcast-heatmap.png`, `ais-top15-tracks.png`, `source-attribution.png`, `forward-trajectory-result.png`), and reverted `MethodsPage.jsx`'s five figures from the inline SVG diagrams back to `<img>` tags pointing at those files, restoring their original captions. Removed the now-unused SVG diagram components entirely rather than leaving dead code. Nothing else in the file (or in `LandingPage.jsx`'s Why section) was touched.
+
+**Note on the earlier sensitivity concern:** these are the same real-incident images flagged in Task 24 (they do contain real vessel names, a port name, and coordinates baked into the pixels) — restoring them was an explicit, direct instruction, so it's not being second-guessed here, but it's worth keeping in mind if this page is ever meant to be public-facing rather than an internal/demo view.
+
+**Verified** via Playwright (dev server): all five images return HTTP 200 and render correctly on `/methods`, zero console errors, rest of the page unchanged.
+
+---
+
+## Task 26 — Build the FAQ section and a real Footer for the landing page
+
+**Request:** generate the FAQs (the button in the Why section's resources card had no content behind it) and a proper Footer for the landing page.
+
+**What was built:**
+- `FaqSection.jsx` (new): a single-open accordion (`id="faqs"`) with six real questions/answers about how TritonTrace actually works — SAR slick detection, the backward hindcast, AIS vessel attribution, an explicit "is an AIS score proof of guilt? No" clarification, what happens after a spill is confirmed (forward tracking/hotspots), and a reminder that this is a demonstration platform. Styled consistently with the rest of the site (same gradient heading treatment as "Why"). Mounted into `LandingPage.jsx` right after the Why section.
+- The Why section's "FAQs" button (previously an inert `<button>`) is now a real `<a href="#faqs">` that jumps straight to the new section.
+- `Footer.jsx` (rebuilt): was a single thin white bar with just the wordmark and disclaimer text; it's now a dark navy ("Oceanic Tech") footer with the TritonTrace logo/tagline on the left and a "Platform" link column (Overview, Why TritonTrace, Methods, FAQs) on the right, all wired to real anchors/routes, with the original disclaimer text kept as a bottom strip. Since `Footer.jsx` is rendered by the shared `Layout` for every public page (not just the landing page), this same footer now also appears on `/methods` — that's a byproduct of it being a shared layout component, not a separate change.
+
+**Verified** via Playwright (dev server, zero console errors): the FAQ accordion opens/closes one item at a time as expected; the footer's "Methods" link correctly navigates to `/methods`; both render with the site's existing oceanic gradient/navy styling.
+
+---
+
+## Task 27 — FAQs as its own page, a real Impact section, a fuller Footer, and an enterprise angle in Why
+
+**Request, corrected from Task 26:** the "FAQs" button should navigate to a dedicated FAQs page, not scroll to a section on the landing page itself (a correction of how Task 26 was built). Separately: build out a real "Impact" section on the landing page using the impact/benefits content from a provided pitch-deck slide (stakeholder impacts: Coast Guard & Navy, Port Authorities, Commercial Shipping & Insurance, Researchers; plus solution benefits: Environmental, Economic, Legal & Ops). Also expand the Footer to include everything in the navbar (Platform/About/Impact/Contact) and everything on the landing page (Overview/Why/Impact/Methods/FAQs). And add a line to the "Why" paragraph about what TritonTrace does for enterprises specifically.
+
+**What changed:**
+- **FAQs is now a real route.** `FaqSection.jsx` is unchanged in content but is now mounted at `/faqs` (`App.jsx`) as its own page, matching how `/methods` works. The Why section's "FAQs" button is a `<Link to="/faqs">` again, not an in-page anchor. The FAQ accordion was removed from `LandingPage.jsx` entirely.
+- **New `ImpactSection.jsx`**, mounted on the landing page at `id="impact"`: a 4-card stakeholder grid (Coast Guard & Navy, Port Authorities, Commercial Shipping & Insurance, Researchers) transcribed from the provided slide's "Impacts" wheel, plus a 3-card "Benefits of the Solution" row (Environmental, Economic, Legal & Ops) transcribed from the same slide's benefits column. The slide's revenue/monetization model (B2G/B2B pricing) was deliberately left out since that's business-model pitch content, not user-facing impact — flagging this in case it was wanted too.
+- **Navbar fix:** the "Impact" nav link previously pointed at a non-existent `/impact` route (silently redirected to `/` via the catch-all) — updated to `/#impact` so it now actually lands on the new section.
+- **Footer expanded** into two link columns instead of one: "Navigate" mirrors the navbar (Platform, About, Impact, Contact) and "Resources" mirrors the landing page's own sections plus the two standalone pages (Overview, Why TritonTrace, Impact & Benefits, Methods, FAQs).
+- **Why paragraph:** appended a sentence on the enterprise use case — fleet operators and P&I clubs using the same reconstruction to generate a verifiable alibi for their own vessels, speeding up insurance/liability claims instead of facing a wrongful detention.
+
+**Verified** via Playwright (dev server, zero console errors): clicking "FAQs" now lands on `/faqs` as a standalone page; the Impact section renders all seven cards correctly; the footer shows both new columns with working links; the Why paragraph reads correctly with the new enterprise sentence.
+
+---
+
+## Task 28 — Fix the Impact nav link, redesign the auth modal, and rename the "Normal"/"Lead Investigator" roles
+
+**Request:** (1) clicking "Impact" in the navbar wasn't actually scrolling to the Impact section from Task 27; (2) the auth ("Forensic Access Control") modal looked too flat/bland — make it soothing and gradient; (3) rename the "Normal User" role to just "Researchers" with no "Field Observer" subtitle/badge clutter, both in the role picker and inside the actual portal; (4) rename "Lead Investigator" to "Authorities", also both in the picker and inside the portal.
+
+**What was fixed/changed:**
+- **Impact nav link:** `Link to="/#impact"` doesn't auto-scroll on its own in react-router — clicking it changed the URL hash but never moved the viewport. Added a small effect in `layout.jsx` (shared by all public routes) that watches `location.hash` and calls `scrollIntoView` on the matching element whenever it changes, so any `/#anchor` link anywhere in the app (nav, footer) now actually scrolls to that section.
+- **Auth modal redesign** (`AuthModal.jsx`): backdrop changed from a flat `slate-900/40` overlay to a soft oceanic gradient (`navy-950/70 → brand-900/40`) with a blur; the modal card itself moved from flat white to a subtle `white → brand-50` gradient with a soft decorative blurred glow in the corner and a gradient (`brand-500 → brand-700`) icon badge instead of a flat one — same "soothing/gradient" treatment used elsewhere on the site, no logic touched.
+- **Role renames** — the actual source of truth is `ROLE_DEFINITIONS` in `AuthContext.jsx`, consumed by both the picker (`AuthModal.jsx`) and the real in-portal HUD badge (`TopHUD.jsx`, shared across all three portals — confirmed via investigation that this is the only place role text renders in-portal, not per-portal files). `normal` → title "Researchers", subtitle cleared, description reworded off "field observation" language, badge set to "RESEARCHERS" (used by the in-portal HUD pill) but hidden specifically in the role-picker card via a new `hideBadgeInPicker` flag, since the ask was for the picker to show only the bare word "Researchers." `admin` → title "Authorities", badge "AUTHORITIES" (subtitle "Maritime Police / Coast Guard / Port State Control" kept, since only the badge/title were asked to change there). A stray leftover `App.jsx` `PortalWorkspace` component (confirmed dead/unused code, not actually rendered by any route) was also updated for consistency but doesn't affect the live UI.
+
+**Verified** via Playwright (dev server, zero console errors): clicking "Impact" in the navbar now scrolls to the section; the auth modal shows the new gradient treatment; the role picker shows "Researchers" with no badge/subtitle and "Authorities" with its "AUTHORITIES" badge; logging in as each confirmed the real portal HUD pill reads "RESEARCHERS" and "AUTHORITIES" respectively.
+
+---
+
+## Task 29 — Correction: Impact should be its own page like FAQs (not inline on the landing page), plus fix the geofence legend radii
+
+**Request:** the Task 27/28 approach for Impact was wrong — it should work exactly like FAQs/Methods: a dedicated page you land on after clicking "Impact," not a section embedded in the landing page. Also: the map's "Visual Legend" panel (shown in both the Researchers and Authorities portals) reads "Watch Zone (50km)" and "Critical Strike Zone (15km)," but the real values should be 100km and 40km.
+
+**What changed:**
+- **Impact is now a standalone route**, mirroring Methods/FAQs exactly: `ImpactSection.jsx` (unchanged content) is now mounted at `/impact` in `App.jsx`, removed entirely from `LandingPage.jsx`, and the navbar's "Impact" link points at the real route again (reverting the `/#impact` hash-link approach from Task 28, which is no longer needed now that Impact isn't a landing-page section). The landing page's "Why" resources card gained a matching "Impact" link alongside Methods/FAQs. Footer's "Impact" and "Impact & Benefits" links updated to point at `/impact` instead of `/#impact`.
+- **Geofence radii fixed at the root, not just the label.** Investigated first: the legend text (`MapLegend.jsx`) and the underlying zone data (`src/utils/regional_alert_geofences.json`) were both already internally consistent at 50km/15km — so this wasn't a display-only typo, the actual circle polygons baked into that JSON were drawn at the wrong radius. Rather than just changing the legend string (which would have made the text lie about what's actually drawn on the map), regenerated all 22 zone polygons (11 Watch Zone + 11 Critical Strike Zone pairs) using Turf.js — computed each existing polygon's true centroid, then redrew a proper circle at the correct radius (100km / 40km) around that same center, preserving every other property. Then updated `MapLegend.jsx`'s label text to match. This keeps the drawn circles and the legend text in agreement, and also fixes the actual hotspot escalation logic (`computeHotspotStatuses`), which checks real particle positions against these same polygons — it was silently using the wrong-sized zones before.
+
+**Verified** via Playwright (dev server, zero console errors): clicking "Impact" navigates to `/impact` as its own page; the landing page no longer shows the Impact cards inline; the portal's Visual Legend now reads "Watch Zone (100km)" / "Critical Strike Zone (40km)," and the drawn map circles are visibly and proportionally larger to match.
+
+---
+
+## Task 30 — Dark "Oceanic Tech" redesign of the whole dashboard chrome (styling only)
+
+**Request:** the portal dashboard (top bar, sidebar, floating map panels) looked flat/bland and disconnected from the dark Mapbox basemap underneath it — since Mapbox's own styling can't be touched, the ask was to redesign the surrounding dashboard chrome so the two feel like one cohesive, soothing interface instead of a light UI awkwardly floating on a dark map.
+
+**What changed (styling only, no logic/props/state touched):** converted every piece of persistent dashboard chrome from the old flat white/light-slate theme to a dark navy theme with cyan/amber/rose accent chips (the same "Oceanic Tech" tokens — `brand`/`navy` — already established for the public site), across:
+- `TopHUD.jsx` — the shared top bar used by all three portals (Researchers/Authorities/Commercial): dark navy bar, translucent accent chips for INCIDENT/AOI/SYS/clock/role badge instead of flat `bg-slate-50` boxes.
+- `InvestigatorLeft.jsx` — the sidebar shell (dark navy, matching header treatment).
+- `TriageQueue.jsx` — incident cards, the ATTRIBUTION/FORWARD TRACK mode buttons, the "REVIEW DOSSIER" button (now a solid brand-cyan CTA instead of slate-800), and the AIS/Cluster Origin segmented toggle.
+- `SourceAttributionPanel.jsx`, `AisCorrelationMatrix.jsx`, `ClusterOriginMatrix.jsx`, `ForwardTrackPanel.jsx` — the nested intelligence-suite panels that render inside an expanded incident card; all converted from white cards to dark navy cards so they don't clash with the now-dark sidebar around them. Semantic status colors (rose=critical, amber=watch/threat, emerald=clear/low-threat) were preserved, just restyled as translucent `/10` chips with `-300`/`-400` text instead of light `-50` backgrounds with `-700` text, so they still read correctly on a dark surface.
+- `LayerControl.jsx` (Telemetry Layers) and `MapLegend.jsx` (Visual Legend) — the two floating panels overlaid directly on the map: converted to a translucent, blurred dark glass panel (`bg-navy-950/85 backdrop-blur-md`) so they sit on top of the map like a HUD overlay rather than a solid disconnected white card; legend swatches that used light `-50` fills were darkened to translucent `/15`-`/20` fills to match.
+- `DossierModal.jsx` and `AuthModal.jsx` were deliberately left as light/gradient surfaces (an intentional "document vs. live HUD" distinction — modals read as documents, the persistent dashboard chrome reads as an ops console).
+
+**Verified** via Playwright (dev server, zero console errors): logged into the Authorities portal and confirmed the top bar, sidebar, both floating map panels, an expanded incident card, and its nested AIS Correlation Matrix all now render in the consistent dark theme with no leftover white/light-slate boxes; TopHUD's shared usage means Researchers and Commercial portals inherit the same treatment automatically.
+
+---
+
+## Task 31 — Fix the default map view (open ocean south of Cyprus) + bring Researchers/Commercial portals to Authorities' dark theme
+
+**Request:** the map's first-load view was centered over Libya/Egypt land, which looked bad — wanted it centered over open ocean south of Cyprus instead. Also wanted the Researchers and Commercial (Enterprise) portal dashboards visually matched to the dark "Oceanic Tech" redesign already done for the Authorities/admin portal in Task 30.
+
+**Map default view:** the initial center/zoom is controlled by `.env` (`VITE_DEFAULT_LAT`/`LON`/`ZOOM`, previously `31.5`/`28.5`/`6.5` — over the Libya/Egypt coastline), with matching hardcoded fallbacks in `MapCanvas.jsx` (Mapbox) and `FallbackLeaflet.jsx` (Leaflet fallback engine) used only if the env vars are missing. Updated all three to `33.3`/`33.3`/`8.3` — open water south of Cyprus. First pass at zoom 7.2 still showed too much of the Israel/Lebanon/Cyprus coastline at the edges, so zoom was tightened to 8.3, which now reads as clean open ocean on load.
+
+**Portal parity (styling only, no logic touched):** applied the same light→dark "Oceanic Tech" token conversion from Task 30 across all Researchers and Commercial portal files — `NormalUserPortal.jsx`, `NormalUserLeft.jsx`, and its modules (`ClusterSummary`, `HistoricalFeed`, `IncidentReportForm`, `ManualMappingPanel`, `SpillClassifier`, `WeatheringChart`, `WeatheringPanel`), plus `CommercialPortal.jsx`, `EnterpriseDashboard.jsx`, `AlibiGenerator.jsx`, and the shared `StatCard.jsx`. Given the scale (13 files, ~2,350 lines), this was done via a scripted regex pass applying the exact same token mapping established for the admin portal (`bg-white/bg-slate-50/100`→navy surfaces, `border-slate-100/200/300`→navy borders, `text-slate-600/700/800/900`→lighter grays/white, and light `-50/-100` accent-color chips → translucent `/10-/15` dark chips with `-300/-400` text) rather than hand-editing each file, then manually reviewed the diff and fixed the handful of edge cases the script couldn't get right on its own: a few buttons where the base and hover color collapsed to the same token (fixed by shifting hover one step lighter throughout), and one legacy solid dark button (`AlibiGenerator`'s "Export PDF" region) recolored to the brand-cyan CTA pattern instead of a flat dark gray. Backdrop/overlay contexts that were already intentionally dark before this change (`Lightbox.jsx`'s modal scrim, image-hover-darken overlays in `HistoricalFeed`/`WeatheringPanel`, `SpillClassifier`'s image backdrop) were deliberately left untouched since they were never part of the light theme to begin with.
+
+**Verified** via Playwright (dev server, zero console errors): logged into all three portals (Researchers, Commercial, Authorities) back-to-back and confirmed matching dark styling across each, and confirmed the map now opens over clean dark ocean south of Cyprus instead of the Egypt/Libya coastline.
+
+---
+
+## Task 32 — Back off the map zoom, and default the AIS/geofence layer toggles to off on entry
+
+**Request:** the map zoom from Task 31 (8.3) was too tight — asked to reduce it without touching anything about the dashboard chrome itself. Also: the "Telemetry Layers"/"Visual Legend" floating panels should be expanded on entry (not collapsed), and — specifically for the Authorities and Researchers portals — the individual layer toggles inside Telemetry Layers (AIS Vessel Tracks, Regional Alert Geofences) should start switched *off* so no AIS/hotspot data is dumped onto the map the moment the portal loads; the user should have to opt in.
+
+**What changed:**
+- Map zoom: `.env`'s `VITE_DEFAULT_ZOOM` (and the matching hardcoded fallbacks in `MapCanvas.jsx`/`FallbackLeaflet.jsx`) reduced from `8.3` to `7.6` — same center (open ocean south of Cyprus, from Task 31), just pulled back so it doesn't feel cramped. No dashboard/chrome file was touched for this.
+- Panel expand state: investigated first — `LayerControl.jsx` and `MapLegend.jsx` already default to `useState(true)` (expanded), so no code change was needed there; confirmed via screenshot that both panels do in fact render expanded on entry for all three portals.
+- Layer toggle defaults: `MapEngine.jsx` (the layer state source for the Authorities/admin portal) had `INITIAL_LAYERS` with `ais_tracks` and `geofences` both `active: true` — changed both to `active: false`, leaving `sar_slick` (the core detected-oil-spill layer) untouched at `active: true`. `NormalUserPortal.jsx` (Researchers) only has `sar_slick`/`geofences` in its `INITIAL_LAYERS` — changed `geofences` to `active: false`, again leaving `sar_slick` on. The Commercial portal has no Telemetry Layers toggle UI at all (confirmed via investigation — it uses a fixed `STATIC_LAYERS` prop, not exposed to the user), so it wasn't in scope and wasn't touched.
+
+**Verified** via Playwright (dev server, zero console errors): logged into all three portals fresh (cleared auth state between each) and confirmed the map now opens at a less-tight zoom; both floating panels render expanded by default; Authorities and Researchers both show AIS Vessel Tracks/Regional Alert Geofences toggled off (dimmed, eye-off icon, no data drawn) with only SAR Slick Polygons active on load.
+
+---
+
+## Task 33 — Correction: panels should be *collapsed*, not expanded, on entry; match a specific reference map framing
+
+**Request:** a reference screenshot showed the desired "clean" entry state for all three portals — the "Telemetry Layers" and "Visual Legend" panels shown as collapsed header-only bars (right-pointing chevron, no content), and a much wider default map view (Cyprus, Turkey, Syria, Lebanon, Israel, Jordan, and Egypt all visible around the open-water AOI) rather than the tighter ocean-only crop from Task 31/32.
+
+**Correction from Task 32:** Task 32 read "telemetry layers visual legends all are toggled up" as "expanded" and left the existing `useState(true)` defaults alone since they already matched that reading. The reference screenshot in this message makes clear the intended meaning was "rolled up" (collapsed) — `LayerControl.jsx` and `MapLegend.jsx` both changed from `useState(true)` to `useState(false)` so both panels now render collapsed to just their header bar on entry, exactly matching the reference (their existing chevron-rotation styling already pointed the right direction for a collapsed state, so no visual logic needed touching beyond the default).
+
+**Map framing:** reverse-engineered the reference screenshot's center/zoom by pixel-matching several labeled cities (Cyprus, Damascus, Amman) against their real coordinates to solve for the implied Mercator center and zoom, then adjusted `.env` (`VITE_DEFAULT_LAT/LON/ZOOM`) and the matching `MapCanvas.jsx`/`FallbackLeaflet.jsx` fallbacks to `34.0 / 34.0 / 6.3` (previously `33.3 / 33.3 / 7.6`) — a wider, more zoomed-out regional view than the tighter open-ocean-only crop from the last two tasks.
+
+**Verified** via Playwright at a matching 1890×1055 viewport (dev server, zero console errors): all three portals now reproduce the reference framing almost exactly (same countries visible in the same relative positions) with both panels collapsed to header-only bars on entry.
+
+---
+
+## Task 34 — Re-fix the map zoom (Task 33's estimate was still off), and fix the Researchers portal's "Incidents in Envelope" count always showing 0
+
+**Request:** Task 33's zoom still didn't match — live testing showed the map far too zoomed in (blank open ocean, no coastline at all) rather than the intended regional view. Separately (sent mid-turn): the Researchers portal's "Manual Mapping" tool draws a polygon and reports "Incidents In Envelope," but it always shows 0 even when the drawn shape visibly overlaps map markers — asked to make it actually count correctly, scoped to the Researchers portal.
+
+**Map zoom, take two:** re-derived the center/zoom by pixel-matching three more labeled cities (Limassol, Damascus, Amman) against their real coordinates from the second (desired) reference screenshot in this message, landing on `lat 33.5 / lon 34.9 / zoom 6.5` (previously `34.0/34.0/6.3`) — updated `.env` and the matching `MapCanvas.jsx`/`FallbackLeaflet.jsx` fallbacks again. Also investigated whether something was silently overriding the configured initial camera after mount (a `flyTo`/`fitBounds` firing on load) — confirmed via code search that `panToCoordinate` (the only thing that moves the camera post-mount) initializes to `null` and is only ever set from user click handlers, never automatically, so no such override exists in this codebase; the mismatch was purely in the estimated coordinates, not a hidden camera reset.
+
+**"Incidents In Envelope" bug (Researchers portal, `ManualMappingPanel.jsx`):** traced to `src/lib/geoMath.js`'s `getIncidentsInsidePolygon`, which read `incident.lat`/`incident.lon` directly — but every entry in `mockHistoricalIncidents` (the 4-item list this panel actually checks against, distinct from the 2 seeded oil-spill incidents and from any AIS vessel data) stores its position as `coordinates: { lat, lon }`, so those fields were always `undefined` and the point-in-polygon check always failed, regardless of where the polygon was drawn. Fixed `geoMath.js` to read `incident.coordinates?.lat ?? incident.lat` (and same for `lon`), and fixed two further bugs in `ManualMappingPanel.jsx`'s render of matched incidents: it was keying/labeling by a nonexistent `inc.id` field (should be `inc.incident_id`) and comparing `inc.status` against `"ACTIVE"`/`"MONITORING"` string literals that don't exist in the mock data (the real values are `"under_investigation"`/`"review"`/`"closed"`) — fixed the badge mapping to match the real status strings.
+
+**Verified:** map zoom confirmed via Playwright screenshot at the same viewport size as the reference — now matches almost exactly (same cities in the same relative positions, both panels collapsed). The polygon-count fix was verified directly against the real `getIncidentsInsidePolygon` function with a small script (not just visually): a polygon drawn around a mock incident's real coordinates now correctly returns that incident, where it previously always returned an empty list regardless of polygon placement.
+
+---
+
+## Task 35 — Remove the INCIDENT chip and UTC clock from the top bar; confirm the collapsed panel style is already correct
+
+**Request:** remove the "INCIDENT: Med-Spill-017" chip and the live UTC clock from the top bar across all three portals; also wanted the Telemetry Layers/Visual Legend panels to look like the reference screenshot (collapsed, header-only, right chevron) rather than expanded — the same collapsed style already implemented in Task 33.
+
+**What changed:** `TopHUD.jsx` (the single shared top bar used by all three portals) — removed the "Active Incident Identifier" chip block and the "UTC Clock" block entirely, along with the now-dead `utcTime` state, the `setInterval`-driven clock `useEffect`, the unused `Clock` icon import, and the `activeIncidentId` prop (no longer read anywhere in the component). Since `TopHUD` is the one shared component, this single edit removes both elements from Authorities, Researchers, and Commercial at once.
+
+**Panel style:** re-checked against the new reference screenshot — it shows the same collapsed, header-only, right-chevron style already implemented for all three portals in Task 33, so no further change was needed there; confirmed this is still the current state rather than assuming.
+
+**Verified** via Playwright (dev server, zero console errors): screenshotted the top bar for all three portals fresh — confirmed no incident chip and no clock remain in any of them, and the Telemetry Layers/Visual Legend panels are still collapsed on entry.
+
+---
+
+## Task 36 — Fix Methods/Impact/FAQs opening scrolled to the bottom instead of the top
+
+**Request:** clicking any of the "TritonTrace Resources" links (Methods/Impact/FAQs) from the landing page's Why section opened the destination page wherever the browser happened to be scrolled to (e.g. showing the footer/Data Sources section first) instead of starting at the top of the new page.
+
+**Root cause:** this is a client-side route change (React Router `Link`), not a full page load — browsers don't reset scroll position on that kind of navigation by default, so the new page inherited whatever scroll offset the landing page was at. `layout.jsx` already had a `useEffect` from an earlier task that scrolls to a `#hash` target when one is present (for in-page anchors like `/#why`), but did nothing when there was no hash.
+
+**Fix:** extended that same effect in `layout.jsx` — when a route change has no hash, it now calls `window.scrollTo(0, 0)` instead of doing nothing, so every plain route change (Methods, Impact, FAQs, or anywhere else) lands at the top, while hash-based in-page links keep working exactly as before.
+
+**Verified** via Playwright (dev server, zero console errors): scrolled the landing page down to the Why section, clicked "Methods," and confirmed `window.scrollY` is `0` immediately after navigation, with the page visibly starting at its own top ("How TritonTrace Works" heading) rather than wherever the landing page had been scrolled to.
+
+---
+
+## Task 37 — Zoom out to fit the full attribution picture when ATTRIBUTION is clicked
+
+**Request:** clicking an incident card correctly pans/zooms to that incident's location, but clicking "ATTRIBUTION" inside it left the camera at that same tight framing — wanted it to automatically zoom out so the whole attribution picture (density cluster + all the converging vessel routes) is visible at once, per the reference screenshot.
+
+**What was built:** `TriageQueue.jsx` gained a `handleToggleAttribution` handler (replacing the ATTRIBUTION button's inline `onClick`). When attribution mode is being turned *on* for an incident, it builds one combined coordinate list — every point in that incident's density-grid `FeatureCollection` (`densityGridByIncident`) plus every top-15 vessel's full AIS trajectory (`topVesselsByIncident` matched by MMSI against `allVesselTracks` from `IncidentContext`) — and feeds it into the existing `setPanToCoordinate({ trajectory: [...] })` path. That path already existed in `MapCanvas.jsx` (added for a different feature) and does a Turf.js bounding-box `fitBounds`, so no changes were needed there at all — just supplying it with the right combined coordinate set for this case. Turning attribution back off doesn't re-pan the camera.
+
+**Verified** via Playwright (dev server, zero console errors): clicked an incident card (tight framing on the incident, as before — unchanged), then clicked "ATTRIBUTION" and confirmed the camera automatically zoomed out to frame the full density cluster and all converging vessel routes, matching the reference screenshot.
+
+---
+
+## Task 38 — Correction: Task 37's zoom-out was too far
+
+**Request:** Task 37's fitBounds used each vessel's *entire* AIS trajectory, which zoomed out much further than intended (showing far-flung route segments across the whole region). Wanted the tighter framing from a second reference screenshot instead — just the density cluster with its cluster of numbered vessel markers close in, not each vessel's full historical track.
+
+**Fix:** `TriageQueue.jsx`'s `handleToggleAttribution` no longer includes each vessel's full `.trajectory` array in the bounds calculation. It now uses only single points per vessel — `matchedCandidateLon/Lat` and `bestEncounterLon/Lat` from `topVesselsByIncident` (the vessel's actual encounter point near the cluster) — combined with the density-grid points, which naturally produces a much tighter bbox focused on the cluster itself rather than each vessel's entire history. The now-unused `allVesselTracks` context value and its per-mmsi track lookup were removed from the handler along with this.
+
+**Verified** via Playwright (dev server, zero console errors): clicked an incident card then "ATTRIBUTION" and confirmed the camera now frames tightly on the density cluster and its cluster of numbered markers, matching the second reference screenshot instead of over-zooming out.
+
+---
+
+## Task 39 — Same tight attribution zoom for the Researchers portal
+
+**Request:** apply the identical zoom-to-fit fix from Task 38 to the Researchers portal's equivalent feature — nothing else to change, just the zoom behavior.
+
+**What was found/built:** the Researchers portal has its own parallel feature — `HistoricalFeed.jsx`'s "BACKWARD ATTRIBUTION" toggle (same concept as the Authorities portal's "ATTRIBUTION" button, just relabeled and rendering `SourceAttributionPanel`/`ClusterSummary` instead of the admin panels). Added a `handleToggleAttribution` handler there, identical in behavior to `TriageQueue.jsx`'s: on enabling attribution mode, it builds a coordinate list from that incident's density-grid points plus each top-15 vessel's `matchedCandidateLon/Lat` and `bestEncounterLon/Lat` (not full trajectories), and calls the same `setPanToCoordinate({ trajectory: [...] })` fitBounds path. The "FORWARD FORECAST" toggle and everything else in this file were left untouched.
+
+**Verified** via Playwright (dev server, zero console errors): clicked an incident card in the Researchers portal, then "BACKWARD ATTRIBUTION," and confirmed the camera zooms in tight on the density cluster and its numbered vessel markers — the same framing now confirmed working in both the Authorities and Researchers portals.
+
+---
+
+## Task 40 — Replace the static "multimember" backward-trajectory image with its animation
+
+**Request:** in the Researchers portal's attribution view, replace the static "backward trajectories across all forcing members" thumbnail (a PNG) with the corresponding `multimember_animation.mp4` video, for both incidents — same click-to-fullscreen behavior as the photo currently has.
+
+**What was built:** copied `08_multimember_animation.mp4` (ow-0008 and ow-0009, both under ~280KB) into `src/data/incidents/<incident>/`, alongside the other per-incident assets. `regionalAttributionImages.js`'s `multimemberStaticImageUrlByIncident` export was replaced with `multimemberAnimationUrlByIncident`, importing the two `.mp4` files the same way the PNGs were imported (Vite handles video assets via the same `import ... from "./file.mp4"` pattern). In `HistoricalFeed.jsx`, the thumbnail and its `Lightbox` payload were swapped from `<img>` to `<video autoPlay loop muted>` (plus `controls` in the fullscreen version) — the existing generic `Lightbox` component (built to take arbitrary `children`) needed no changes at all to support this. The now-orphaned static `07_multimember_static.png` files were deleted from `src/data/incidents/` since nothing imports them anymore.
+
+**Verified** via Playwright (dev server, zero console errors): the thumbnail now autoplays the animation inline, and clicking it opens the exact same fullscreen Lightbox layout/caption as before, now playing the animated 6-forcing-member backward trajectory instead of a single static frame.
+
+---
+
+## Task 41 — Remove the "Under Investigation" status tag from the Researchers portal's incident cards
+
+**Request:** remove the status badge (e.g. "Under Investigation") shown next to each oil spill incident in the Researchers portal.
+
+**What changed:** `HistoricalFeed.jsx` — removed the status badge `<span>` from each incident card's header (it sat next to the incident id, e.g. `ow-0008`), along with the `STATUS_STYLES` map, `DEFAULT_STATUS_STYLE`, and `formatStatusLabel` helper that only existed to support it, since nothing else in the file used them.
+
+**Verified** via Playwright (dev server, zero console errors): the Researchers portal's incident list now shows just the incident id, detected date, and est. area — no status tag next to either ow-0008 or ow-0009.
+
+---
+
+## Task 42 — Fix cross-portal and cross-tab state leaks project-wide; rename "Feed" to "Historical Feed"
+
+**Request:** running Forward Track in the Authorities portal, then logging out and logging into the Commercial portal, still showed forward-track state — a cross-portal leak. Separately, running Attribution/Forward Track on the Researchers portal's Feed tab and then switching to the Map tab left those overlays showing there too (and the reverse). Asked to audit the whole project for this class of bug ("one feature shouldn't collide with another") and fix all instances at once, plus rename the Researchers portal's "Feed" tab to "Historical Feed".
+
+**Root cause:** `IncidentContext`'s `IncidentProvider` is mounted exactly once at the very top of the app (in `main.jsx`, above the router) and is never unmounted — so `activeIncident`, `activeAnalysisMode`, `forwardTrajectory`, focused-vessel/candidate state, the drawn polygon, etc. all persist indefinitely across logout/login and across switching between unrelated UI tabs, since nothing was ever wired to clear them. Investigated first to confirm scope, rather than guessing: found the exact same *class* of bug (no reset on mode/tab switch) independently in three places.
+
+**Fixes:**
+- **`IncidentContext.jsx`**: added a new `resetIncidentSession()` function that clears every piece of session/analysis state (active incident, pan target, draw-polygon state, correlation marker, analysis mode, focused vessel/candidate, attribution view, forward-track step/playback/trajectory) — deliberately leaving the raw AIS data caches (`commercialFleet`/`allVesselTracks`) alone since those are just loaded data, not session state.
+- **Cross-portal (logout) fix**: wired `resetIncidentSession()` into both real logout call sites — `TopHUD.jsx`'s `handleLogout` (the shared header Logout button used by all three portals) and `CommercialPortal.jsx`'s own separate `handleLogout` (its bottom-right "Switch Role" button) — so no matter which logout button is used, from any portal, the next login starts clean.
+- **Cross-tab fix (Researchers portal)**: `NormalUserLeft.jsx`'s tab switcher (`Report`/`Historical Feed`/`Map`/`Analysis`) now runs a `handleTabChange` on every click that resets `activeAnalysisMode`, `correlationMarker`, `interactionMode`, and the drawn polygon — so leaving the Historical Feed tab clears any active Attribution/Forward Track overlay, and leaving the Map tab clears any in-progress polygon draw, in both directions.
+- **Same class of bug, found proactively (Commercial portal)**: `EnterpriseDashboard.jsx`'s Alibi Generator ↔ P&I Risk Assessor mode switch had the identical issue — switching modes never cleared the other mode's highlighted vessel/geofence or selected P&I club, so a P&I-flagged vessel's highlight could stay stuck on the map after switching back to Alibi Generator. Added a `handleModeChange` that clears `activeAnalysisMode`, the selected P&I club/vessel, and both highlight callbacks on every mode switch.
+- **Rename**: `NormalUserLeft.jsx`'s tab label changed from `"Feed"` to `"Historical Feed"`.
+
+**Verified** via Playwright (dev server, zero console errors): (1) ran Forward Track in Authorities, logged out via the header Logout button, logged into Commercial, and confirmed zero leftover forward-track UI/overlay; (2) ran Backward Attribution on the Researchers portal's Historical Feed tab, switched to Map, and confirmed the map/side panel came up completely clean with no leftover density cluster or vessel routes; (3) confirmed the tab now reads "Historical Feed" and wraps cleanly in the tab bar.
+
+---
+
+## Task 43 — Investigated a reported Forward Forecast regression (not reproducible); fixed a real bug in Manual Mapping's incident count
+
+**Forward Forecast report:** asked to fix Forward Forecast/the map animation, described as broken "as it was working beforehand." Tested thoroughly on a freshly restarted dev server — Authorities' Forward Track and Researchers' Forward Forecast both play/animate correctly (step advances, particles spread, hotspot status updates), including after a tab round-trip, with zero console errors. Most likely explanation: `IncidentContext.jsx` (edited in Task 42 to add `resetIncidentSession`) exports both a hook and a provider — a shape Vite's Fast Refresh can't always hot-reload cleanly (the linter already flags this pattern) — so an already-open browser tab could have been left in a stale state after that edit landed, without the underlying code actually being broken. Restarted the dev server and asked the user to hard-refresh; no code change was made for this part since nothing reproduced from a clean load.
+
+**Manual Mapping's incident count (real bug, found while investigating):** in the Researchers portal's Map tab, drawing a polygon around the two incidents visibly rendered on the map (ow-0008, ow-0009) still reported "0 historical incidents" even when they were clearly inside the drawn shape. Root cause: `ManualMappingPanel.jsx` was checking the polygon against `mockHistoricalIncidents` (an unrelated 4-item placeholder list from `utils/mockData.js`, at coordinates like 32.5°N/33.1°E) instead of `seedIncidents` (the real two incidents actually rendered on the map, at ~34.08°N/35.27°E and ~34.60°N/34.86°E) — two entirely different datasets with no coordinate overlap, so the count could never match what a user saw on screen. Switched the import to `seedIncidents` and updated the matched-incident card to show `slick_area_sqkm` (real data) instead of a fake status badge that only ever had one possible value in the real dataset.
+
+**Verified**: the polygon/incident matching logic confirmed correct against the real seed coordinates via a direct script, and then end-to-end in the browser — drew a wide polygon covering both incidents' real map markers and confirmed "2 Detected" with both ow-0008 and ow-0009 listed, zero console errors.
+
+**Full feature audit (same task, requested "check every feature, don't change anything"):** ran 53 automated checks (no code changes) across the landing page, `/methods`, `/impact`, `/faqs`, and all three portals' major features. 50/53 passed cleanly with zero console errors. Two of the three flagged items turned out to be test-script mistakes (a wrong assumption that the Researchers portal has the same AIS/Cluster-Origin toggle as Authorities — it doesn't; and an imprecise automated polygon draw giving a false "0 incidents" that a hand-drawn polygon immediately corrected). The third was a genuine bug: clicking "INTERSECT ROUTE" on one vessel in the Authorities portal's AIS Correlation Matrix also locked a second, unrelated vessel simultaneously — fixed as Task 44 below.
+
+---
+
+## Task 44 — Fix the "TARGET LOCKED" dual-lock bug found during the Task 43 audit
+
+**Request:** fix the bug flagged in Task 43's audit.
+
+**Root cause:** `AisCorrelationMatrix.jsx` determined a vessel's "locked" state by comparing coordinates — `correlationMarker[0] === vessel.intersectCoord[0]` — which only checks longitude. Any two vessels whose matched-candidate points share the same (or a very close) longitude both satisfied that comparison, so both buttons showed "TARGET LOCKED" from a single click on either one.
+
+**Fix:** since `handleIntersect` already calls `focusVessel(vessel.mmsi)` — a mutually-exclusive, per-vessel identity already tracked in `IncidentContext` (`focusedVesselMmsi`) — replaced every coordinate comparison with a direct `focusedVesselMmsi === vessel.mmsi` check (`isLocked`), which is guaranteed unique per vessel unlike a shared coordinate. Also fixed the "CLEAR MARKER" button, which previously only cleared `correlationMarker` and would have silently desynced from the new per-vessel check (leaving the vessel still visually "locked"); it now also clears `focusedVesselMmsi` by toggling it off via the existing `focusVessel` call.
+
+**Verified** via Playwright (dev server, zero console errors): clicking one vessel's "INTERSECT ROUTE" locks exactly that one; clicking a different vessel replaces the lock (still exactly one locked, never two); clicking the same locked vessel again correctly toggles it off; and "CLEAR MARKER" now correctly unlocks the vessel too.
+
 

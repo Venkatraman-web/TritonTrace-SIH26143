@@ -26,8 +26,9 @@ export const AisCorrelationMatrix = ({ incidentId }) => {
   }));
 
   const handleIntersect = (vessel) => {
+    const wasLocked = focusedVesselMmsi === vessel.mmsi;
     focusVessel(vessel.mmsi);
-    if (correlationMarker && correlationMarker[0] === vessel.intersectCoord[0]) {
+    if (wasLocked) {
       setCorrelationMarker(null);
       return;
     }
@@ -46,8 +47,11 @@ export const AisCorrelationMatrix = ({ incidentId }) => {
         </h2>
         {correlationMarker && (
           <button
-            onClick={() => setCorrelationMarker(null)}
-            className="text-[10px] text-slate-500 hover:text-slate-800 font-mono tracking-wider underline font-bold"
+            onClick={() => {
+              setCorrelationMarker(null);
+              if (focusedVesselMmsi) focusVessel(focusedVesselMmsi);
+            }}
+            className="text-[10px] text-slate-500 hover:text-white font-mono tracking-wider underline font-bold"
           >
             CLEAR MARKER
           </button>
@@ -55,16 +59,18 @@ export const AisCorrelationMatrix = ({ incidentId }) => {
       </div>
 
       <div className="flex flex-col gap-3">
-        {suspects.map((vessel, index) => (
+        {suspects.map((vessel, index) => {
+          const isLocked = correlationMarker != null && focusedVesselMmsi === vessel.mmsi;
+          return (
           <div
             key={vessel.id}
-            className={`flex flex-col bg-white border rounded-md p-4 transition-colors shadow-sm ${
+            className={`flex flex-col bg-navy-900 border rounded-md p-4 transition-colors shadow-sm ${
               focusedVesselMmsi === vessel.mmsi
-                ? "border-rose-400 ring-1 ring-rose-400/20 bg-rose-50/30"
-                : "border-slate-200"
+                ? "border-rose-500/50 ring-1 ring-rose-500/20 bg-rose-500/5"
+                : "border-navy-800"
             }`}
           >
-            <div className="flex justify-between items-start mb-3 border-b border-slate-100 pb-3">
+            <div className="flex justify-between items-start mb-3 border-b border-navy-800 pb-3">
               <div className="flex flex-col">
                 <div className="flex items-center gap-1.5">
                   <span
@@ -72,11 +78,11 @@ export const AisCorrelationMatrix = ({ incidentId }) => {
                     style={{ backgroundColor: colorForRank(vessel.rank) }}
                     title={`Route color (rank #${vessel.rank})`}
                   />
-                  <span className="text-slate-900 font-bold text-xs">
+                  <span className="text-white font-bold text-xs">
                     {vessel.name}
                   </span>
                   {index === 0 && (
-                    <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                    <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
                   )}
                 </div>
                 <span className="text-[10px] text-slate-500 font-mono mt-1 font-semibold">
@@ -86,38 +92,38 @@ export const AisCorrelationMatrix = ({ incidentId }) => {
 
               <div className="flex flex-col items-end">
                 <span
-                  className={`text-sm font-mono font-bold ${vessel.score > 90 ? "text-rose-600" : vessel.score > 50 ? "text-amber-600" : "text-emerald-600"}`}
+                  className={`text-sm font-mono font-bold ${vessel.score > 90 ? "text-rose-400" : vessel.score > 50 ? "text-amber-400" : "text-emerald-400"}`}
                 >
                   {vessel.score}%
                 </span>
-                <span className="text-[9px] font-bold text-slate-400 tracking-wider">
+                <span className="text-[9px] font-bold text-slate-500 tracking-wider">
                   THREAT SCORE
                 </span>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-2 mb-4">
-              <div className="flex flex-col p-2 bg-slate-50 rounded border border-slate-100">
-                <span className="text-[9px] font-bold text-slate-400 tracking-wider">
+              <div className="flex flex-col p-2 bg-navy-950 rounded border border-navy-800">
+                <span className="text-[9px] font-bold text-slate-500 tracking-wider">
                   VESSEL TYPE
                 </span>
-                <span className="text-[10px] text-slate-900 font-mono font-semibold truncate">
+                <span className="text-[10px] text-white font-mono font-semibold truncate">
                   {vessel.type}
                 </span>
               </div>
-              <div className="flex flex-col p-2 bg-slate-50 rounded border border-slate-100">
-                <span className="text-[9px] font-bold text-slate-400 tracking-wider">
+              <div className="flex flex-col p-2 bg-navy-950 rounded border border-navy-800">
+                <span className="text-[9px] font-bold text-slate-500 tracking-wider">
                   MIN. DISTANCE TO ORIGIN
                 </span>
-                <span className="text-[10px] text-slate-900 font-mono font-semibold">
+                <span className="text-[10px] text-white font-mono font-semibold">
                   {vessel.cpa}
                 </span>
               </div>
-              <div className="flex flex-col p-2 bg-slate-50 rounded border border-slate-100 col-span-2">
-                <span className="text-[9px] font-bold text-slate-400 tracking-wider">
+              <div className="flex flex-col p-2 bg-navy-950 rounded border border-navy-800 col-span-2">
+                <span className="text-[9px] font-bold text-slate-500 tracking-wider">
                   ENCOUNTER TIME NEAR SPILL ORIGIN
                 </span>
-                <span className="text-[10px] text-slate-900 font-mono font-semibold">
+                <span className="text-[10px] text-white font-mono font-semibold">
                   {vessel.encounterTime}
                 </span>
               </div>
@@ -126,14 +132,12 @@ export const AisCorrelationMatrix = ({ incidentId }) => {
             <button
               onClick={() => handleIntersect(vessel)}
               className={`w-full py-2 flex justify-center items-center gap-2 rounded-md text-[10px] font-bold tracking-wider transition-colors shadow-sm border ${
-                correlationMarker &&
-                correlationMarker[0] === vessel.intersectCoord[0]
-                  ? "bg-rose-50 border-rose-200 text-rose-700"
-                  : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                isLocked
+                  ? "bg-rose-500/10 border-rose-500/30 text-rose-300"
+                  : "bg-navy-800 border-navy-700 text-slate-300 hover:bg-navy-700 hover:text-white"
               }`}
             >
-              {correlationMarker &&
-              correlationMarker[0] === vessel.intersectCoord[0] ? (
+              {isLocked ? (
                 <>
                   <Crosshair className="w-3.5 h-3.5" /> TARGET LOCKED
                 </>
@@ -144,7 +148,8 @@ export const AisCorrelationMatrix = ({ incidentId }) => {
               )}
             </button>
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

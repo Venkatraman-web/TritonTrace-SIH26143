@@ -11,19 +11,20 @@ export const ROLE_DEFINITIONS = {
   normal: {
     id: 'normal',
     role: 'normal',
-    title: 'Normal User',
-    subtitle: 'Field Observer & Local Response',
-    description: 'Submit field observation alerts, inspect historical incident archive, and utilize lightweight SAR classification.',
-    badge: 'FIELD OBSERVER',
+    title: 'Researchers',
+    subtitle: '',
+    description: 'Access historical incident archives, run lightweight SAR classification, and support ongoing marine research analysis.',
+    badge: 'RESEARCHERS',
+    hideBadgeInPicker: true,
     accentColor: 'emerald'
   },
   admin: {
     id: 'admin',
     role: 'admin',
-    title: 'Lead Investigator',
+    title: 'Authorities',
     subtitle: 'Maritime Police / Coast Guard / Port State Control',
     description: 'Full forensic intelligence: SAR segmentation, 12h Lagrangian hindcast, DBSCAN clustering, and AIS vessel attribution.',
-    badge: 'LEAD INVESTIGATOR',
+    badge: 'AUTHORITIES',
     accentColor: 'cyan'
   },
   commercial: {

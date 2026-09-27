@@ -9,7 +9,7 @@ import { MapLegend } from "../../components/map/MapLegend";
 
 const INITIAL_LAYERS = [
   { id: "sar_slick", label: "SAR Slick Polygons", active: true, color: "bg-cyan-500" },
-  { id: "geofences", label: "Regional Alert Geofences", active: true, color: "bg-emerald-500" },
+  { id: "geofences", label: "Regional Alert Geofences", active: false, color: "bg-emerald-500" },
 ];
 
 export const NormalUserPortal = () => {
@@ -33,7 +33,7 @@ export const NormalUserPortal = () => {
   }, [isSidebarOpen]);
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-slate-50 text-slate-900 overflow-hidden font-sans">
+    <div className="flex flex-col h-screen w-screen bg-navy-900 text-white overflow-hidden font-sans">
       <TopHUD
         activeIncidentId={mockIncident.incident_id}
         demoMode={false}
@@ -47,7 +47,7 @@ export const NormalUserPortal = () => {
             isSidebarOpen ? "w-80 lg:w-96" : "w-0"
           }`}
         >
-          <div className="w-80 lg:w-96 h-full overflow-hidden bg-white shadow-xl flex flex-col relative">
+          <div className="w-80 lg:w-96 h-full overflow-hidden bg-navy-900 shadow-xl flex flex-col relative">
             <NormalUserLeft onCollapse={() => setIsSidebarOpen(false)} />
           </div>
         </div>
@@ -56,7 +56,7 @@ export const NormalUserPortal = () => {
         {!isSidebarOpen && (
           <button
             onClick={() => setIsSidebarOpen(true)}
-            className="absolute top-4 left-4 z-30 p-2.5 bg-white border border-slate-200 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-600 text-slate-600 rounded-md shadow-md transition-all"
+            className="absolute top-4 left-4 z-30 p-2.5 bg-navy-900 border border-navy-800 hover:border-brand-500/40 hover:bg-brand-500/10 hover:text-brand-400 text-slate-500 rounded-md shadow-md transition-all"
             title="Expand User Panel"
           >
             <PanelLeftOpen className="w-5 h-5" />
@@ -64,7 +64,7 @@ export const NormalUserPortal = () => {
         )}
 
         {/* Map Canvas */}
-        <div className="flex-1 relative h-full w-full bg-slate-100 isolate">
+        <div className="flex-1 relative h-full w-full bg-navy-800 isolate">
           <MapCanvas
             interactive={true}
             onEngineResolved={(eng) => setEngine(eng)}

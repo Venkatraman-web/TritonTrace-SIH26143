@@ -78,7 +78,7 @@ export const WeatheringChart = ({ data, currentHour }) => {
 
   if (data.length === 0) {
     return (
-      <div className="p-3 border border-dashed border-slate-300 rounded-md bg-slate-50 text-center">
+      <div className="p-3 border border-dashed border-navy-700 rounded-md bg-navy-900 text-center">
         <span className="text-[10px] text-slate-500">
           No weathering data for this incident.
         </span>
@@ -195,16 +195,16 @@ export const WeatheringChart = ({ data, currentHour }) => {
               className="w-2.5 h-2.5 rounded-sm shrink-0"
               style={{ backgroundColor: series.light }}
             />
-            <span className="text-[9px] text-slate-600 flex-1 truncate">
+            <span className="text-[9px] text-slate-500 flex-1 truncate">
               {series.label}
             </span>
-            <span className="text-[9px] font-mono font-bold text-slate-800">
+            <span className="text-[9px] font-mono font-bold text-slate-200">
               {(displayRow?.[series.key] ?? 0).toFixed(1)}%
             </span>
           </div>
         ))}
       </div>
-      <span className="text-[9px] text-slate-400 px-1 font-mono">
+      <span className="text-[9px] text-slate-500 px-1 font-mono">
         {hoverHour != null ? `T+${displayHour}h (hover)` : `T+${Math.round(displayHour)}h`}
         {currentHour != null && hoverHour == null ? " · synced to forecast scrubber" : ""}
       </span>

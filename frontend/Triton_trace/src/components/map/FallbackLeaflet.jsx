@@ -19,8 +19,8 @@ L.Icon.Default.mergeOptions({
  * Uses CartoDB Dark Matter tiles for a tactical intelligence appearance.
  */
 export const FallbackLeaflet = ({
-  center = [31.35, 31.685], // Leaflet uses [Latitude, Longitude]
-  zoom = 5.5,
+  center = [33.5, 34.9], // Leaflet uses [Latitude, Longitude]
+  zoom = 6.5,
   interactive = true,
   className = "",
   panToCoordinate,

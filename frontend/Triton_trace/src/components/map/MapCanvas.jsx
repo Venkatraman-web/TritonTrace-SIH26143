@@ -83,9 +83,9 @@ export const MapCanvas = ({
   isolateToActiveIncident = false,
 }) => {
   const token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
-  const defaultLat = Number(import.meta.env.VITE_DEFAULT_LAT) || 31.35;
-  const defaultLon = Number(import.meta.env.VITE_DEFAULT_LON) || 31.685;
-  const defaultZoom = Number(import.meta.env.VITE_DEFAULT_ZOOM) || 5.5;
+  const defaultLat = Number(import.meta.env.VITE_DEFAULT_LAT) || 33.5;
+  const defaultLon = Number(import.meta.env.VITE_DEFAULT_LON) || 34.9;
+  const defaultZoom = Number(import.meta.env.VITE_DEFAULT_ZOOM) || 6.5;
 
   const {
     panToCoordinate,

@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Waves, ArrowRight } from 'lucide-react';
+import { AuthModal } from '../auth/AuthModal';
 
 export default function Navbar() {
   const location = useLocation();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   // Helper function to dynamically style the active tab
   const isActive = (path) => location.pathname === path;
@@ -51,15 +54,20 @@ export default function Navbar() {
             <button 
               type="button"
               className="flex items-center gap-2 bg-brand-600 text-white px-4 py-2 rounded-md text-sm font-bold shadow-sm hover:bg-brand-500 hover:shadow transition-all"
-              onClick={() => console.log("Launch Portal triggered!")}
+              onClick={() => setIsAuthModalOpen(true)}
             >
               Launch Portal
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
-          
+
         </div>
       </div>
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
     </nav>
   );
 }

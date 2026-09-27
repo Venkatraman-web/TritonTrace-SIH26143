@@ -14,13 +14,13 @@ const INITIAL_LAYERS = [
   {
     id: "ais_tracks",
     label: "AIS Vessel Tracks",
-    active: true,
+    active: false,
     color: "bg-amber-500",
   },
   {
     id: "geofences",
     label: "Regional Alert Geofences",
-    active: true,
+    active: false,
     color: "bg-emerald-500",
   },
 ];

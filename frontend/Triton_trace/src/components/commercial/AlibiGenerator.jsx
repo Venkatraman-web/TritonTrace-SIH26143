@@ -13,9 +13,9 @@ import { StatCard } from "../ui/StatCard";
 // alone doesn't meaningfully implicate the vessel.
 const probabilityForRank = (rank) => {
   if (rank == null) return null;
-  if (rank <= 5) return { label: "High Probable", className: "text-rose-700 bg-rose-50 border-rose-200" };
-  if (rank <= 20) return { label: "Mid Probable", className: "text-amber-700 bg-amber-50 border-amber-200" };
-  return { label: "Very Unlikely", className: "text-slate-600 bg-slate-100 border-slate-200" };
+  if (rank <= 5) return { label: "High Probable", className: "text-rose-300 bg-rose-500/10 border-rose-500/30" };
+  if (rank <= 20) return { label: "Mid Probable", className: "text-amber-300 bg-amber-500/10 border-amber-500/30" };
+  return { label: "Very Unlikely", className: "text-slate-500 bg-navy-800 border-navy-800" };
 };
 
 // Finds the vessel's own ping closest in time to the encounter timestamp —
@@ -185,7 +185,7 @@ export const AlibiGenerator = ({ onHighlightVessel }) => {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-2 text-blue-600 font-bold text-xs">
+      <div className="flex items-center gap-2 text-blue-400 font-bold text-xs">
         <ShieldCheck className="h-4 w-4" />
         <span>ALIBI GENERATOR</span>
       </div>
@@ -203,12 +203,12 @@ export const AlibiGenerator = ({ onHighlightVessel }) => {
                 onClick={() => handleSelectSpill(inc)}
                 className={`flex flex-col items-start p-2.5 rounded-md border text-left transition-all ${
                   isActive
-                    ? "border-cyan-500 bg-cyan-50 shadow-inner"
-                    : "border-slate-200 bg-white hover:bg-slate-50"
+                    ? "border-cyan-500 bg-cyan-500/10 shadow-inner"
+                    : "border-navy-800 bg-navy-900 hover:bg-navy-700"
                 }`}
               >
                 <span
-                  className={`font-mono text-xs font-bold ${isActive ? "text-cyan-700" : "text-slate-800"}`}
+                  className={`font-mono text-xs font-bold ${isActive ? "text-cyan-300" : "text-slate-200"}`}
                 >
                   {inc.incident_id}
                 </span>
@@ -220,7 +220,7 @@ export const AlibiGenerator = ({ onHighlightVessel }) => {
           })}
         </div>
         {activeSpill && (
-          <div className="flex items-center gap-1.5 text-[10px] text-cyan-700 bg-cyan-50 border border-cyan-200 rounded px-2 py-1">
+          <div className="flex items-center gap-1.5 text-[10px] text-cyan-300 bg-cyan-500/10 border border-cyan-500/30 rounded px-2 py-1">
             <Radar className="w-3 h-3 shrink-0" />
             Backtracked density cluster now shown on the map for{" "}
             {activeSpill.incident_id}.
@@ -241,30 +241,30 @@ export const AlibiGenerator = ({ onHighlightVessel }) => {
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             disabled={!activeIncident}
             placeholder={activeIncident ? "e.g. 211317341" : "Select a spill first"}
-            className="flex-1 px-2.5 py-2 text-xs font-mono border border-slate-200 rounded-md disabled:bg-slate-50 disabled:text-slate-400"
+            className="flex-1 px-2.5 py-2 text-xs font-mono border border-navy-800 rounded-md disabled:bg-navy-900 disabled:text-slate-500"
           />
           <button
             onClick={handleSearch}
             disabled={!activeIncident || !mmsiInput.trim()}
-            className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-900 disabled:opacity-40 text-white text-xs font-bold rounded-md transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 bg-brand-600 hover:bg-brand-500 disabled:opacity-40 text-white text-xs font-bold rounded-md transition-colors"
           >
             <Search className="w-3.5 h-3.5" /> Search
           </button>
         </div>
         {lookupError && (
-          <div className="text-[10px] text-rose-700 bg-rose-50 border border-rose-200 rounded px-2 py-1.5">
+          <div className="text-[10px] text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded px-2 py-1.5">
             {lookupError}
           </div>
         )}
       </div>
 
       {lookupResult && (
-        <div className="flex flex-col gap-2 p-3 bg-slate-50 border border-slate-200 rounded-md">
+        <div className="flex flex-col gap-2 p-3 bg-navy-900 border border-navy-800 rounded-md">
           <div className="flex items-center justify-between">
-            <span className="font-mono text-xs font-bold text-slate-800">
+            <span className="font-mono text-xs font-bold text-slate-200">
               {lookupResult.track.name}
             </span>
-            <span className="flex items-center gap-1 text-[10px] text-violet-700">
+            <span className="flex items-center gap-1 text-[10px] text-violet-300">
               <MapPin className="w-3 h-3" /> Track shown on map
             </span>
           </div>
@@ -316,16 +316,16 @@ export const AlibiGenerator = ({ onHighlightVessel }) => {
               Its real track is still shown on the map for reference.
             </div>
           )}
-          <p className="text-[9px] text-slate-400 leading-relaxed">
+          <p className="text-[9px] text-slate-500 leading-relaxed">
             Evidence only — this is not an automated verdict. Compare the
             plotted track against the density cluster/hotspot markers on the
             map to judge proximity yourself.
           </p>
           <button
             onClick={handleExportPdf}
-            className="flex items-center justify-center gap-2 w-max px-3 py-2 bg-white border border-slate-200 hover:border-blue-300 hover:bg-blue-50 rounded-md text-[10px] font-bold text-slate-700 transition-colors"
+            className="flex items-center justify-center gap-2 w-max px-3 py-2 bg-navy-900 border border-navy-800 hover:border-blue-500/40 hover:bg-blue-500/10 rounded-md text-[10px] font-bold text-slate-300 transition-colors"
           >
-            <Download className="w-3.5 h-3.5 text-blue-600" /> EXPORT EVIDENCE (PDF)
+            <Download className="w-3.5 h-3.5 text-blue-400" /> EXPORT EVIDENCE (PDF)
           </button>
         </div>
       )}

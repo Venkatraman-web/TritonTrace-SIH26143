@@ -22,8 +22,11 @@ export const getIncidentsInsidePolygon = (polygonCoords, incidents) => {
     const polygon = turf.polygon([coords]);
 
     return incidents.filter(incident => {
+      const lat = incident.coordinates?.lat ?? incident.lat;
+      const lon = incident.coordinates?.lon ?? incident.lon;
+      if (lat == null || lon == null) return false;
       // Turf expects [lon, lat] for points
-      const point = turf.point([incident.lon, incident.lat]);
+      const point = turf.point([lon, lat]);
       return turf.booleanPointInPolygon(point, polygon);
     });
   } catch (error) {
